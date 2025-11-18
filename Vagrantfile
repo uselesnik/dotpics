@@ -20,6 +20,9 @@ Vagrant.configure("2") do |config|
     vb.memory = "4096"
     vb.cpus = 4
   end
+  
+  # config.vm.provision "file", source: "", destination: ""
+
   config.vm.provision "shell", inline: <<-SHELL
     sudo -i
     apt-get update
