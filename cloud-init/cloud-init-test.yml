@@ -1,0 +1,23 @@
+packages: 
+  - software-properties-common
+  - curl
+  - nginx
+  - certbot
+  - python3-certbot-nginx
+  - git
+
+# Ignoring users thing
+
+write_files:
+  - path: /usr/local/bin/setup_prereqs.sh
+    permissions: '0755'
+    owner: root:root
+    content: |
+      echo "Hello this is prerequisites"
+      add-apt-repository -y ppa:dotnet/backports
+      apt-get update -y 
+      apt-get install -y dotnet-sdk-9.0 || apt-get install -y dotnet-sdk-8.0 || apt-get install -y dotnet-sdk-7.0
+
+runcmd:
+  - [ bash, /usr/local/bin/setup_prereqs.sh ]
+  - [ echo, "Hello world!, from cloud-init!" ]
