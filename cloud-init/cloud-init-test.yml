@@ -10,14 +10,22 @@ packages:
 
 write_files:
   - path: /usr/local/bin/setup_prereqs.sh
-    permissions: '0755'
+    permissions: '0754'
     owner: root:root
     content: |
-      echo "Hello this is prerequisites"
+      echo "Adding .NET SDK backport"
+      echo "Adding MongoDB repository"
       add-apt-repository -y ppa:dotnet/backports
+      curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | sudo gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg --dearmor
+      echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-8.0.list
       apt-get update -y 
+      echo "Trying to install .NET SDK 9.0, 8.0, or 7.0"
       apt-get install -y dotnet-sdk-9.0 || apt-get install -y dotnet-sdk-8.0 || apt-get install -y dotnet-sdk-7.0
+      echo "Installing MongoDB"
+      apt-get install -y mongodb-org
+      echo "done"
 
 runcmd:
-  - [ bash, /usr/local/bin/setup_prereqs.sh ]
+  - [ sudo, -i ] # The Script(-s) must be ran as root
+  - [ bash, "/usr/local/bin/setup_prereqs.sh" ]
   - [ echo, "Hello world!, from cloud-init!" ]
