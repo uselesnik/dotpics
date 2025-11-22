@@ -13,19 +13,34 @@ write_files:
     permissions: '0754'
     owner: root:root
     content: |
-      echo "Adding .NET SDK backport"
-      echo "Adding MongoDB repository"
+      log() {
+        local ts
+        ts=$(date -Iseconds)
+        echo "[$ts] $*"
+      }
+
+      log "Adding .NET SDK backport"
+      log "Adding MongoDB repository"
+
       add-apt-repository -y ppa:dotnet/backports
       curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | sudo gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg --dearmor
-      echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+
+      cat <<EOF > /etc/apt/sources.list.d/mongodb-org-8.0.list 
+        deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse 
+      EOF
+
       apt-get update -y 
-      echo "Trying to install .NET SDK 9.0, 8.0, or 7.0"
+
+      log "Trying to install .NET SDK 9.0, 8.0, or 7.0"
       apt-get install -y dotnet-sdk-9.0 || apt-get install -y dotnet-sdk-8.0 || apt-get install -y dotnet-sdk-7.0
-      echo "Installing MongoDB"
+      log "Installing MongoDB"
       apt-get install -y mongodb-org
-      echo "done"
+
+      log "Done! everything is installed"
 
 runcmd:
-  - [ sudo, -i ] # The Script(-s) must be ran as root
   - [ bash, "/usr/local/bin/setup_prereqs.sh" ]
-  - [ echo, "Hello world!, from cloud-init!" ]
+  - ufw allow 80/tcp || echo "ufw allow failed(80)"
+  - ufw allow 443/tcp || echo "ufw allow failed(443)"
+  - ufw reload
+  - echo "Hello world!, from cloud-init!" 
