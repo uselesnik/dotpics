@@ -25,6 +25,14 @@ Vagrant.configure("2") do |config|
 
   config.vm.provision "shell", inline: <<-SHELL
     sudo -i
-    apt-get update
+    apt-get update -y
+    apt-get install -y software-properties-common curl nginx certbot python3-certbot-nginx git
+    add-apt-repository -y ppa:dotnet/backports
+    curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg --dearmor
+    echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+    apt-get update -y 
+    apt-get install -y dotnet-sdk-9.0 || apt-get install -y dotnet-sdk-8.0 || apt-get install -y dotnet-sdk-7.0
+    apt-get install -y mongodb-org
+    echo "Done"
   SHELL
 end
