@@ -1,9 +1,4 @@
-# -*- mode: ruby -*-
-# vi: set ft=ruby :
-
 Vagrant.configure("2") do |config|
-  # https://docs.vagrantup.com.
-  # boxes at https://vagrantcloud.com/search.
   config.vm.box = "cloud-image/ubuntu-24.04"
   config.vm.box_version = "20251031.0.0"
   config.vm.box_check_update = false
@@ -12,8 +7,6 @@ Vagrant.configure("2") do |config|
 
   config.vm.network "forwarded_port", guest: 80, host: 80
   config.vm.network "forwarded_port", guest: 443, host: 443
-
-  # config.vm.synced_folder "../data", "/vagrant_data"
 
   config.vm.synced_folder ".", "/vagrant", disabled: true
 
@@ -25,22 +18,13 @@ Vagrant.configure("2") do |config|
   
   config.vm.provision "file", source: "start_app_and_wait.sh", destination: "/tmp/start_app_and_wait.sh"
   config.vm.provision "shell", path: "prereqs.sh"
-
+  
+  # Keep the script in case you want to live reload (would require git pull first, but this will probably happen on a time period anyway)
   config.vm.provision "shell", inline: <<-SHELL
     sudo -i
-    # The file is moved so someobne can restart the app if needed
     mv /tmp/start_app_and_wait.sh /usr/bin/start_app_and_wait.sh
     chown root:root /usr/bin/start_app_and_wait.sh
     chmod 0754 /usr/bin/start_app_and_wait.sh
     bash /usr/bin/start_app_and_wait.sh
-    # apt-get update -y
-    # apt-get install -y software-properties-common curl nginx certbot python3-certbot-nginx git
-    # add-apt-repository -y ppa:dotnet/backports
-    # curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg --dearmor
-    # echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-8.0.list
-    # apt-get update -y 
-    # apt-get install -y dotnet-sdk-9.0 || apt-get install -y dotnet-sdk-8.0 || apt-get install -y dotnet-sdk-7.0
-    # apt-get install -y mongodb-org
-    # echo "Done"
   SHELL
 end
