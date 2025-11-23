@@ -75,7 +75,7 @@ dotnet update package MongoDB.Driver
 
 log "Publishing dotnet APP" 
 if [ -f "DotPic.csproj" ]; then
-    if dotnet publish -c Release -o publish; then
+    if dotnet publish -c Release ; then
       log "Published project with success!"
     else 
       log "Failed to publish project!"
@@ -90,9 +90,9 @@ After=network.target
 
 [Service]
 # Run the published DLL for best performance. Working directory points to the publish output.
-WorkingDirectory=/dotpics/publish
+WorkingDirectory=/dotpics/bin/Release/net8.0/
 # ExecStart runs the published dll. Ensure `dotnet publish` has been run to produce this file.
-ExecStart=/usr/bin/dotnet /dotpics/publish/DotPic.dll
+ExecStart=/usr/bin/dotnet /dotpics/bin/Release/net8.0/DotPic.dll
 StandardOutput=append:/app-logs/myapp.log
 StandardError=inherit
 Restart=always

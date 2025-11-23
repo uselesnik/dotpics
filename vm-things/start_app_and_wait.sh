@@ -36,7 +36,7 @@ fi
 
 
 log "Trying to publish app again (in case of changes)" 
-dotnet publish --project /dotpics -c Release -o /dotpics/publish
+dotnet publish --project /dotpics -c Release
 
 if command -v systemctl >/dev/null 2>&1; then
   if systemctl list-unit-files --type=service | grep -q '^myapp.service'; then
