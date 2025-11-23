@@ -1,11 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-mkdir -p /app/logs/
-LOGFILE="/app/logs/prereqs.log"
-DOMAIN="${DOMAIN:-devops-vm-08.lrk.si}"
+LOGDIR="/app-logs"
+mkdir -p "$LOGDIR"
+LOGFILE="$LOGDIR/prereqs.log"
+DOMAIN="${DOMAIN:-devops-sk-21.lrk.si}"
 EMAIL="${EMAIL:-eg98918@student.uni-lj.si}"
 APP_PROJECT_DIR="/dotpics"
+APP_GIT_LINK="https://github.com/uselesnik/dotpics.git"
 
 log () { 
     local ts
@@ -13,13 +15,29 @@ log () {
     echo "[$ts] $*" | tee -a "$LOGFILE"
 }
 
-log "Installing packages (curl, nginx, git)"
+# Truncate when running for the first time
+log "Installing packages (curl, nginx, git)" > "$LOGFILE" 
 
 apt-get update -y
 
 apt-get install -y software-properties-common curl nginx certbot python3-certbot-nginx git
 
 log "Installed packages"
+
+log "Clonning project repository" 
+
+cd / 
+git clone "$APP_GIT_LINK"
+
+if [ -d "$APP_PROJECT_DIR" ]; then
+    log "Repository correctly cloned to $APP_PROJECT_DIR !" 
+else 
+    log "Critical failure! Unable to clone app, check github link: $APP_GIT_LINK"
+    exit 1
+fi
+
+log "Cloned repository" 
+
 log "Adding dotnet backport"
 
 add-apt-repository -y ppa:dotnet/backports
@@ -40,7 +58,6 @@ apt-get install -y dotnet-sdk-9.0 mongodb-org
 
 log "Succesfully installed dotnet and mongodb" 
 
-
 log "Now making service for myapp" 
 
 cat > /etc/systemd/system/myapp.service <<'EOF'
@@ -50,10 +67,10 @@ After=network.target
 
 [Service]
 # Run the published DLL for best performance. Working directory points to the publish output.
-WorkingDirectory=/app/BlazorApp1/publish
+WorkingDirectory=/dotpics
 # ExecStart runs the published dll. Ensure `dotnet publish` has been run to produce this file.
-ExecStart=/usr/bin/dotnet /app/BlazorApp1/publish/BlazorApp1.dll
-StandardOutput=append:/app/logs/myapp.log
+ExecStart=/usr/bin/dotnet /dotpics/publish/change-this-before-release
+StandardOutput=append:/app-logs/myapp.log
 StandardError=inherit
 Restart=always
 RestartSec=5
@@ -69,7 +86,10 @@ Environment=ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
 WantedBy=multi-user.target
 EOF
 
+log "Reloading daemon" 
 systemctl daemon-reload
+
+log "Enabling myapp.service"
 systemctl enable myapp.service || log "systemctl enable returned non-zero (maybe already enabled)"
 
 
@@ -102,6 +122,8 @@ server {
 EOF
 
 ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/myapp
+
+log "Testing nginx and reloading nginx"
 
 nginx -t && systemctl reload nginx
 
