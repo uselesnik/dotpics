@@ -60,8 +60,8 @@ log "Succesfully installed dotnet and mongodb"
 
 log "Enabling and starting mongoDB service"
 
-systemctl enable mongodb
-systemctl start mongodb
+systemctl enable mongod
+systemctl start mongod
 
 log "Enabled and started mongoDB" 
 
@@ -75,7 +75,7 @@ dotnet update package MongoDB.Driver
 
 log "Publishing dotnet APP" 
 if [ -f "DotPic.csproj" ]; then
-    if dotnet publish -c Release -o /dotpics/publish; then
+    if dotnet publish -c Release -o publish; then
       log "Published project with success!"
     else 
       log "Failed to publish project!"
@@ -90,7 +90,7 @@ After=network.target
 
 [Service]
 # Run the published DLL for best performance. Working directory points to the publish output.
-WorkingDirectory=/dotpics
+WorkingDirectory=/dotpics/publish
 # ExecStart runs the published dll. Ensure `dotnet publish` has been run to produce this file.
 ExecStart=/usr/bin/dotnet /dotpics/publish/DotPic.dll
 StandardOutput=append:/app-logs/myapp.log
@@ -138,7 +138,7 @@ server {
       # Rewrite upstream Location headers so redirects don't expose the internal port (5000)
       # This handles cases where Kestrel generates a redirect to https://...:5000
       proxy_redirect https://127.0.0.1:5000/ https://\$host/;
-      proxy_redirect http://127.0.0.1:5001/ http://\$host/;
+      proxy_redirect http://127.0.0.1:5194/ http://\$host/;
     }
 }
 EOF
