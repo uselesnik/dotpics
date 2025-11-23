@@ -54,7 +54,7 @@ dotnet run --urls="http://localhost:5000"
 Open your browser and navigate to: http://localhost:5000
 
 ## Project Structure
-
+```
 DotPic/
 ├── Components/
 │   ├── Layout/
@@ -80,7 +80,7 @@ DotPic/
 ├── Program.cs
 ├── appsettings.json
 └── DotPic.csproj
-
+```
 ## Key Features Explained
 
 ### Image Storage & Management
