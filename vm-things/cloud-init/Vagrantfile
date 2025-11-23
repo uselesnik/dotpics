@@ -1,11 +1,12 @@
 Vagrant.configure(2) do |config|
-  # config.env.enable # enable .env support plugin (it will let us easily enable cloud_init support)
-
   config.vm.box = "cloud-image/ubuntu-24.04"
   config.vm.box_version = "20251031.0.0"
   config.vm.box_check_update = false
 
-  # # Give a custom name for a VM created by this script for a Vagrant CLI
+  config.vm.network "forwarded_port", guest: 80, host: 80
+  config.vm.network "forwarded_port", guest: 443, host: 443
+
+  # Give a custom name for a VM created by this script for a Vagrant CLI
   config.vm.define "AppServer (Cloud-init)"
 
   config.vm.provider "virtualbox" do |v|
