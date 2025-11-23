@@ -54,9 +54,15 @@ log "MongoDB repo added"
 log "Installing dotnet and mongodb"
 
 apt-get update -y
-apt-get install -y dotnet-sdk-9.0 mongodb-org
+apt-get install -y dotnet-sdk-8.0 mongodb-org
 
 log "Succesfully installed dotnet and mongodb" 
+
+log "Getting required dotnet packages" 
+
+dotnet add package MongoDB.Driver
+dotnet add package Microsoft.Extensions.Options
+dotnet update package MongoDB.Driver
 
 log "Now making service for myapp" 
 
