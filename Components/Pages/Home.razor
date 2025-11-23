@@ -1,0 +1,53 @@
+﻿@page "/"
+
+<PageTitle>DotPic - Home</PageTitle>
+
+<div class="container mt-5">
+    <h1>Welcome to DotPic</h1>
+    <p class="lead">A simple image management app with MongoDB</p>
+    
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">Blazor Connection Test</h5>
+            <p class="card-text">Click the button below to test if Blazor is working correctly.</p>
+            
+            <button @onclick="ShowMessage" class="btn btn-primary">
+                Test Blazor Connection
+            </button>
+
+            @if (showMessage)
+            {
+                <div class="alert alert-success mt-3">
+                    <h4>✅ Blazor is Working!</h4>
+                    <p>Great! The client-server communication is functioning correctly.</p>
+                    <p><strong>What this proves:</strong></p>
+                    <ul>
+                        <li>Blazor components are rendering</li>
+                        <li>Event handling is working (button clicks)</li>
+                        <li>Real-time updates are functioning</li>
+                        <li>WebSocket connection is established</li>
+                    </ul>
+                    <p class="mb-0">You can now proceed to test the <a href="/mongotest" class="alert-link">MongoDB connection</a>.</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <h5>Next Steps:</h5>
+        <ol>
+            <li>If this button works → Blazor is functioning ✅</li>
+            <li>Then test <a href="/mongotest">MongoDB connection</a></li>
+            <li>If MongoDB works → Full app is ready ✅</li>
+        </ol>
+    </div>
+</div>
+
+@code {
+    private bool showMessage = false;
+
+    private void ShowMessage()
+    {
+        showMessage = true;
+    }
+}
