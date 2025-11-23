@@ -1,0 +1,183 @@
+@page "/mongotest"
+@using DotPic.Models
+@using DotPic.Services
+@inject IUserService UserService
+
+<PageTitle>MongoDB Test</PageTitle>
+
+<h1>MongoDB Connection Test</h1>
+
+<div class="container mt-4">
+    @if (isTesting)
+    {
+        <div class="alert alert-info">
+            <h4>Testing MongoDB connection...</h4>
+            <p>Please wait while we connect to the database.</p>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-@alertClass">
+            <h4>@testMessage</h4>
+            @if (exceptionMessage != null)
+            {
+                <div class="mt-2">
+                    <strong>Error Details:</strong>
+                    <pre class="bg-dark text-light p-2 mt-1">@exceptionMessage</pre>
+                </div>
+            }
+        </div>
+
+        @if (users?.Any() == true)
+        {
+            <div class="mt-4">
+                <h5>✅ Users in Database (@users.Count found):</h5>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Age</th>
+                            <th>ID</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in users)
+                        {
+                            <tr>
+                                <td>@user.Name</td>
+                                <td>@user.Email</td>
+                                <td>@user.Age</td>
+                                <td><small>@user.Id</small></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else if (testSuccessful && users?.Count == 0)
+        {
+            <div class="mt-4">
+                <p>No users found in the database. The connection works but the database is empty.</p>
+            </div>
+        }
+
+        <div class="mt-4">
+            <button class="btn btn-primary me-2" @onclick="TestConnection">
+                Test Connection Again
+            </button>
+            
+            <button class="btn btn-success" @onclick="AddTestUser" disabled="@(!testSuccessful)">
+                Add Test User
+            </button>
+
+            <button class="btn btn-warning ms-2" @onclick="ClearUsers" disabled="@(!testSuccessful || users?.Count == 0)">
+                Clear All Users
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isTesting = false;
+    private string testMessage = "Click 'Test Connection' to begin";
+    private string alertClass = "secondary";
+    private string? exceptionMessage;
+    private List<User>? users;
+    private bool testSuccessful = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Don't auto-test on page load, let user initiate it
+    }
+
+    private async Task TestConnection()
+    {
+        isTesting = true;
+        testMessage = "";
+        exceptionMessage = null;
+        users = null;
+        testSuccessful = false;
+        StateHasChanged();
+
+        try
+        {
+            // Try to get users from database - this tests the connection
+            users = await UserService.GetUsersAsync();
+            
+            testMessage = $"✅ MongoDB Connection Successful!";
+            alertClass = "success";
+            testSuccessful = true;
+            
+            if (users.Count > 0)
+            {
+                testMessage += $" Found {users.Count} user(s) in the database.";
+            }
+            else
+            {
+                testMessage += " Database is empty.";
+            }
+        }
+        catch (Exception ex)
+        {
+            testMessage = "❌ MongoDB Connection Failed!";
+            alertClass = "danger";
+            exceptionMessage = $"{ex.Message}\n\nStack Trace:\n{ex.StackTrace}";
+            testSuccessful = false;
+        }
+        finally
+        {
+            isTesting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task AddTestUser()
+    {
+        if (!testSuccessful) return;
+
+        try
+        {
+            var testUser = new User
+            {
+                Name = "Test User " + DateTime.Now.ToString("HHmmss"),
+                Email = $"test{DateTime.Now:HHmmss}@example.com",
+                Age = new Random().Next(18, 65)
+            };
+
+            await UserService.CreateUserAsync(testUser);
+            await TestConnection(); // Refresh the list
+        }
+        catch (Exception ex)
+        {
+            testMessage = "Failed to add test user";
+            exceptionMessage = ex.Message;
+            alertClass = "danger";
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClearUsers()
+    {
+        if (!testSuccessful || users == null) return;
+
+        try
+        {
+            foreach (var user in users)
+            {
+                if (user.Id != null)
+                {
+                    await UserService.DeleteUserAsync(user.Id);
+                }
+            }
+            await TestConnection(); // Refresh the list
+        }
+        catch (Exception ex)
+        {
+            testMessage = "Failed to clear users";
+            exceptionMessage = ex.Message;
+            alertClass = "danger";
+            StateHasChanged();
+        }
+    }
+}
