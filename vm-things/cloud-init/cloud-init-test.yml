@@ -240,7 +240,7 @@ write_files:
 
 
 runcmd:
-  - [ bash, "/usr/local/bin/setup_prereqs.sh" ]
+  - [ bash, "/usr/local/bin/prereqs.sh" ]
   - ufw allow 80/tcp || echo "ufw allow failed(80)"
   - ufw allow 443/tcp || echo "ufw allow failed(443)"
   - ufw reload
