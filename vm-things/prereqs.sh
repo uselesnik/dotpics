@@ -2,7 +2,7 @@
 set -euo pipefail
 
 mkdir -p /app/logs/
-LOFGILE="/app/logs/prereqs.log"
+LOGFILE="/app/logs/prereqs.log"
 DOMAIN="${DOMAIN:-devops-vm-08.lrk.si}"
 EMAIL="${EMAIL:-eg98918@student.uni-lj.si}"
 APP_PROJECT_DIR="/dotpics"
