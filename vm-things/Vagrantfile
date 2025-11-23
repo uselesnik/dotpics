@@ -24,9 +24,15 @@ Vagrant.configure("2") do |config|
   end
   
   config.vm.provision "shell", path: "prereqs.sh"
+  config.vm.provision "file", source: "start_app_and_wait.sh", destination: "/tmp/start_app_and_wait.sh"
 
   config.vm.provision "shell", inline: <<-SHELL
-    # sudo -i
+    sudo -i
+    # The file is moved so someobne can restart the app if needed
+    mv /tmp/start_app_and_wait.sh /usr/bin/start_app_and_wait.sh
+    chown root:root /usr/bin/start_app_and_wait.sh
+    chmod 0754 /usr/bin/start_app_and_wait.sh
+    bash /usr/bin/start_app_and_wait.sh
     # apt-get update -y
     # apt-get install -y software-properties-common curl nginx certbot python3-certbot-nginx git
     # add-apt-repository -y ppa:dotnet/backports

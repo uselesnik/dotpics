@@ -58,6 +58,13 @@ apt-get install -y dotnet-sdk-8.0 mongodb-org
 
 log "Succesfully installed dotnet and mongodb" 
 
+log "Enabling and starting mongoDB service"
+
+systemctl enable mongodb
+systemctl start mongodb
+
+log "Enabled and started mongoDB" 
+
 log "Getting required dotnet packages" 
 
 cd "$APP_PROJECT_DIR"
@@ -66,8 +73,16 @@ dotnet add package MongoDB.Driver
 dotnet add package Microsoft.Extensions.Options
 dotnet update package MongoDB.Driver
 
-log "Now making service for myapp" 
+log "Publishing dotnet APP" 
+if [ -f "DotPic.csproj" ]; then
+    if dotnet publish -c Release -o /dotpics/publish; then
+      log "Published project with success!"
+    else 
+      log "Failed to publish project!"
+    fi
+fi
 
+log "Making service for myapp" 
 cat > /etc/systemd/system/myapp.service <<'EOF'
 [Unit]
 Description=My .NET App service
@@ -77,7 +92,7 @@ After=network.target
 # Run the published DLL for best performance. Working directory points to the publish output.
 WorkingDirectory=/dotpics
 # ExecStart runs the published dll. Ensure `dotnet publish` has been run to produce this file.
-ExecStart=/usr/bin/dotnet /dotpics/publish/DotPic
+ExecStart=/usr/bin/dotnet /dotpics/publish/DotPic.dll
 StandardOutput=append:/app-logs/myapp.log
 StandardError=inherit
 Restart=always
@@ -99,7 +114,6 @@ systemctl daemon-reload
 
 log "Enabling myapp.service"
 systemctl enable myapp.service || log "systemctl enable returned non-zero (maybe already enabled)"
-
 
 log "preparing nginx configuration" 
 log "Writing nginx site config for $DOMAIN"
