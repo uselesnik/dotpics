@@ -10,5 +10,6 @@ namespace DotPic.Services
         Task UpdateUserAsync(string id, User user);
         Task DeleteUserAsync(string id);
         Task AddTestUserAsync(); // Add this line
+         Task UpdateUserImageAsync(string id, byte[] imageData, string contentType, string fileName); 
     }
 }

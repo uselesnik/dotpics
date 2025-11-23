@@ -50,5 +50,15 @@ namespace DotPic.Services
             };
             await CreateUserAsync(testUser);
         }
+        public async Task UpdateUserImageAsync(string id, byte[] imageData, string contentType, string fileName)
+        {
+            var update = Builders<User>.Update
+                .Set(u => u.ProfileImage, imageData)
+                .Set(u => u.ImageContentType, contentType)
+                .Set(u => u.FileName, fileName)
+                .Set(u => u.FileSize, imageData.Length);
+
+            await _users.UpdateOneAsync(user => user.Id == id, update);
+        }
     }
 }
