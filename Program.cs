@@ -16,6 +16,7 @@ var mongoSettings = new MongoDbSettings
 
 builder.Services.AddSingleton(mongoSettings);
 builder.Services.AddSingleton<IUserService, UserService>();
+builder.Services.AddSingleton<IImageService, ImageService>(); 
 
 var app = builder.Build();
 

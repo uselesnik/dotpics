@@ -1,0 +1,201 @@
+@page "/upload"
+@using DotPic.Models
+@using DotPic.Services
+@using DotPic.Utilities
+@using Microsoft.AspNetCore.Components.Forms
+@inject IImageService ImageService
+@inject NavigationManager Navigation
+
+<PageTitle>Upload Image - DotPic</PageTitle>
+
+<div class="container mt-4">
+    <h1>📤 Upload Image</h1>
+    <p class="text-muted">Upload images to your personal cloud storage</p>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Select Image</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Choose Image File (max 5MB)</label>
+                        <InputFile class="form-control" OnChange="OnInputFileChange" 
+                                  accept=".jpg,.jpeg,.png,.gif,.bmp,.webp" />
+                    </div>
+                    
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+                    
+                    @if (selectedFile != null)
+                    {
+                        <div class="alert alert-info">
+                            <p><strong>Selected File:</strong> @selectedFile.Name</p>
+                            <p><strong>Size:</strong> @ImageHelper.FormatFileSize(selectedFile.Size)</p>
+                            <p><strong>Type:</strong> @selectedFile.ContentType</p>
+                        </div>
+
+                        @if (imagePreviewUrl != null)
+                        {
+                            <div class="text-center mb-3">
+                                <p><strong>Preview:</strong></p>
+                                <img src="@imagePreviewUrl" class="img-thumbnail" style="max-height: 300px;" alt="Preview" />
+                            </div>
+                        }
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description (optional)</label>
+                            <input type="text" class="form-control" id="description" @bind="imageDescription" 
+                                   placeholder="Describe your image..." />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="tags" class="form-label">Tags (optional)</label>
+                            <input type="text" class="form-control" id="tags" @bind="imageTags" 
+                                   placeholder="nature, vacation, etc. (comma separated)" />
+                        </div>
+
+                        <button class="btn btn-success btn-lg w-100" @onclick="UploadImage" disabled="@isUploading">
+                            @if (isUploading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            📤 Upload Image
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">📊 Storage Info</h5>
+                </div>
+                <div class="card-body">
+                    <p>✅ Supported formats: JPG, PNG, GIF, BMP, WebP</p>
+                    <p>📏 Max file size: 5MB</p>
+                    <p>🔒 Your images are stored securely</p>
+                    <p>🔍 Add tags to make images searchable</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private IBrowserFile? selectedFile;
+    private string? errorMessage;
+    private string? imagePreviewUrl;
+    private string imageDescription = "";
+    private string imageTags = "";
+    private bool isUploading = false;
+
+    private async void OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        errorMessage = null;
+        imagePreviewUrl = null;
+
+        // Basic validation
+        if (selectedFile.Size > 5 * 1024 * 1024) // 5MB
+        {
+            errorMessage = "File size must be less than 5MB";
+            selectedFile = null;
+            StateHasChanged();
+            return;
+        }
+
+        var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp" };
+        if (!allowedTypes.Contains(selectedFile.ContentType))
+        {
+            errorMessage = "Please select a valid image file (JPG, PNG, GIF, BMP, WebP)";
+            selectedFile = null;
+            StateHasChanged();
+            return;
+        }
+
+        // Create preview
+        try
+        {
+            var resizedFile = await selectedFile.RequestImageFileAsync(selectedFile.ContentType, 400, 400);
+            var buffer = new byte[resizedFile.Size];
+            await resizedFile.OpenReadStream().ReadAsync(buffer);
+            imagePreviewUrl = $"data:{selectedFile.ContentType};base64,{Convert.ToBase64String(buffer)}";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Preview error: {ex.Message}");
+            // Continue without preview
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task UploadImage()
+    {
+        if (selectedFile == null) return;
+
+        isUploading = true;
+        errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            // Read the file into a byte array
+            var buffer = new byte[selectedFile.Size];
+            await selectedFile.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).ReadAsync(buffer);
+
+            // Get image dimensions for preview
+            var imageInfo = await GetImageDimensions(buffer, selectedFile.ContentType);
+
+            // Create image object
+            var image = new StoredImage
+            {
+                FileName = Guid.NewGuid().ToString() + Path.GetExtension(selectedFile.Name),
+                OriginalFileName = selectedFile.Name,
+                ContentType = selectedFile.ContentType,
+                ImageData = buffer,
+                FileSize = selectedFile.Size,
+                Description = imageDescription,
+                Tags = imageTags,
+                UploadDate = DateTime.UtcNow,
+                Width = imageInfo.width,
+                Height = imageInfo.height,
+                UploadedBy = "User" // You can replace this with actual user info later
+            };
+
+            // Save to database
+            await ImageService.UploadImageAsync(image);
+
+            // Success - redirect to gallery
+            Navigation.NavigateTo("/gallery");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Upload failed: {ex.Message}";
+        }
+        finally
+        {
+            isUploading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<(int width, int height)> GetImageDimensions(byte[] imageData, string contentType)
+    {
+        try
+        {
+            // For a real implementation, you might want to use ImageSharp or similar
+            // For now, we'll return placeholder dimensions
+            return (800, 600);
+        }
+        catch
+        {
+            return (0, 0);
+        }
+    }
+}
