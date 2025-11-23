@@ -9,12 +9,26 @@ packages:
 # Ignoring users thing
 
 write_files:
+  - path: /etc/profile.d/set_home.sh
+    permissions: '0644'
+    content: |
+      # Set the HOME environment variable
+      mkdir -p /home/app
+      chmod 755 /home/app
+
+      export HOME=/home/app
+      export DOTNET_CLI_HOME=/tmp
   - path: /usr/local/bin/prereqs.sh
     permissions: '0750'
     owner: root:root
     content: |
       #!/bin/bash
       set -euo pipefail
+
+      export HOME=/home/app
+      export DOTNET_CLI_HOME=/tmp
+
+
       LOGDIR="/app-logs"
       mkdir -p "$LOGDIR"
       LOGFILE="$LOGDIR/prereqs.log"
@@ -83,8 +97,8 @@ write_files:
 
       cd "$APP_PROJECT_DIR"
 
-      dotnet add package MongoDB.Driver
-      dotnet add package Microsoft.Extensions.Options
+      dotnet add package MongoDB.Driver || log "Failed to add MongoDB.Driver" && exit 1
+      dotnet add package Microsoft.Extensions.Options || log "Failed to add Microsoft.Extension && exit 1
       dotnet update package MongoDB.Driver
 
       log "Publishing dotnet APP" 
@@ -116,7 +130,7 @@ write_files:
       Environment=ASPNETCORE_ENVIRONMENT=Production
       # Use ASPNETCORE_URLS so the process listens on the loopback TLS port expected by nginx
       Environment=ASPNETCORE_URLS=https://127.0.0.1:5000
-      Environment=ASPNETCORE_HTTPS_PORT=443/usr/local/bin/start
+      Environment=ASPNETCORE_HTTPS_PORT=443
       Environment=ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
 
       [Install]
@@ -175,13 +189,17 @@ write_files:
       log "Prerequisites setup finished. Logs: $LOGFILE"
   - path: /usr/local/bin/start_app_and_wait.sh
     permissions: 0754
-    owner: root:repository
+    owner: root:root
     content: |
       #!/bin/bash
+      
+      export HOME=/home/app
+      export DOTNET_CLI_HOME=/tmp
+
       mkdir -p /app-logs
       APP_LOGS="/app-logs/app.log"
       PROVISION_LOG="/app-logs/ready_provision.log"
-      APP_READY_LOG="app-logs/ready.txt"
+      APP_READY_LOG="/app-logs/ready.txt"
 
       log() {
         local timestamp
@@ -198,7 +216,7 @@ write_files:
       ready_log() {
         local timestamp
         timestamp="$(date -Iseconds)"
-        echo "[$timestamp] $*" | tee -a 
+        echo "[$timestamp] $*" | tee -a "$APP_READY_LOG"
       }  
 
 
@@ -240,7 +258,7 @@ write_files:
 
 
 runcmd:
-  - [ bash, "/usr/local/bin/prereqs.sh" ]
+  - bash /etc/profile.d/set_home.sh && bash "/usr/local/bin/prereqs.sh"
   - ufw allow 80/tcp || echo "ufw allow failed(80)"
   - ufw allow 443/tcp || echo "ufw allow failed(443)"
   - ufw reload
