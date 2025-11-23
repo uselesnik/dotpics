@@ -60,6 +60,8 @@ log "Succesfully installed dotnet and mongodb"
 
 log "Getting required dotnet packages" 
 
+cd "$APP_PROJECT_DIR"
+
 dotnet add package MongoDB.Driver
 dotnet add package Microsoft.Extensions.Options
 dotnet update package MongoDB.Driver
@@ -75,7 +77,7 @@ After=network.target
 # Run the published DLL for best performance. Working directory points to the publish output.
 WorkingDirectory=/dotpics
 # ExecStart runs the published dll. Ensure `dotnet publish` has been run to produce this file.
-ExecStart=/usr/bin/dotnet /dotpics/publish/change-this-before-release
+ExecStart=/usr/bin/dotnet /dotpics/publish/DotPic
 StandardOutput=append:/app-logs/myapp.log
 StandardError=inherit
 Restart=always
