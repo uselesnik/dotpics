@@ -36,7 +36,7 @@ log "MongoDB repo added"
 log "Installing dotnet and mongodb"
 
 apt-get update -y
-apt-get install dotnet-sdk-9.0 mongodb-org
+apt-get install -y dotnet-sdk-9.0 mongodb-org
 
 log "Succesfully installed dotnet and mongodb" 
 
