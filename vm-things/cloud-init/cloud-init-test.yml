@@ -9,38 +9,240 @@ packages:
 # Ignoring users thing
 
 write_files:
-  - path: /usr/local/bin/setup_prereqs.sh
-    permissions: '0754'
+  - path: /usr/local/bin/prereqs.sh
+    permissions: '0750'
     owner: root:root
     content: |
-      log() {
-        local ts
-        ts=$(date -Iseconds)
-        echo "[$ts] $*"
+      #!/bin/bash
+      set -euo pipefail
+      LOGDIR="/app-logs"
+      mkdir -p "$LOGDIR"
+      LOGFILE="$LOGDIR/prereqs.log"
+      DOMAIN="${DOMAIN:-devops-sk-21.lrk.si}"
+      EMAIL="${EMAIL:-eg98918@student.uni-lj.si}"
+      APP_PROJECT_DIR="/dotpics"
+      APP_GIT_LINK="https://github.com/uselesnik/dotpics.git"
+
+      log () { 
+          local ts
+          ts="$(date -Iseconds)"
+          echo "[$ts] $*" | tee -a "$LOGFILE"
       }
 
-      log "Adding .NET SDK backport"
-      log "Adding MongoDB repository"
+      # Truncate when running for the first time
+      log "Installing packages (curl, nginx, git)" > "$LOGFILE" 
+
+      apt-get update -y
+
+      apt-get install -y software-properties-common curl nginx certbot python3-certbot-nginx git
+
+      log "Installed packages"
+
+      log "Clonning project repository" 
+
+      cd / 
+      git clone "$APP_GIT_LINK"
+
+      if [ -d "$APP_PROJECT_DIR" ]; then
+          log "Repository correctly cloned to $APP_PROJECT_DIR !" 
+      else 
+          log "Critical failure! Unable to clone app, check github link: $APP_GIT_LINK"
+          exit 1
+      fi
+
+      log "Cloned repository" 
+
+      log "Adding dotnet backport"
 
       add-apt-repository -y ppa:dotnet/backports
-      curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | sudo gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg --dearmor
 
-      cat <<EOF > /etc/apt/sources.list.d/mongodb-org-8.0.list 
-        deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse 
+      log "Added dotnet backport"
+
+      log "Adding mongodb repo"
+
+      curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg --dearmor
+      echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+
+      log "MongoDB repo added" 
+
+      log "Installing dotnet and mongodb"
+
+      apt-get update -y
+      apt-get install -y dotnet-sdk-8.0 mongodb-org
+
+      log "Succesfully installed dotnet and mongodb" 
+
+      log "Enabling and starting mongoDB service"
+
+      systemctl enable mongod
+      systemctl start mongod
+
+      log "Enabled and started mongoDB" 
+
+      log "Getting required dotnet packages" 
+
+      cd "$APP_PROJECT_DIR"
+
+      dotnet add package MongoDB.Driver
+      dotnet add package Microsoft.Extensions.Options
+      dotnet update package MongoDB.Driver
+
+      log "Publishing dotnet APP" 
+      if [ -f "DotPic.csproj" ]; then
+          if dotnet publish -c Release -o publish; then
+            log "Published project with success!"
+          else 
+            log "Failed to publish project!"
+          fi
+      fi
+
+      log "Making service for myapp" 
+      cat > /etc/systemd/system/myapp.service <<'EOF'
+      [Unit]
+      Description=My .NET App service
+      After=network.target
+
+      [Service]
+      # Run the published DLL for best performance. Working directory points to the publish output.
+      WorkingDirectory=/dotpics/publish
+      # ExecStart runs the published dll. Ensure `dotnet publish` has been run to produce this file.
+      ExecStart=/usr/bin/dotnet /dotpics/publish/DotPic.dll
+      StandardOutput=append:/app-logs/myapp.log
+      StandardError=inherit
+      Restart=always
+      RestartSec=5
+      SyslogIdentifier=myapp
+      User=root
+      Environment=ASPNETCORE_ENVIRONMENT=Production
+      # Use ASPNETCORE_URLS so the process listens on the loopback TLS port expected by nginx
+      Environment=ASPNETCORE_URLS=https://127.0.0.1:5000
+      Environment=ASPNETCORE_HTTPS_PORT=443/usr/local/bin/start
+      Environment=ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
+
+      [Install]
+      WantedBy=multi-user.target
       EOF
 
-      apt-get update -y 
+      log "Reloading daemon" 
+      systemctl daemon-reload
 
-      log "Trying to install .NET SDK 9.0, 8.0, or 7.0"
-      apt-get install -y dotnet-sdk-9.0 || apt-get install -y dotnet-sdk-8.0 || apt-get install -y dotnet-sdk-7.0
-      log "Installing MongoDB"
-      apt-get install -y mongodb-org
+      log "Enabling myapp.service"
+      systemctl enable myapp.service || log "systemctl enable returned non-zero (maybe already enabled)"
 
-      log "Done! everything is installed"
+      log "preparing nginx configuration" 
+      log "Writing nginx site config for $DOMAIN"
+      NGINX_CONF="/etc/nginx/sites-available/myapp"
+      cat > "$NGINX_CONF" <<EOF
+      server {
+          listen 80;
+          server_name $DOMAIN;
+
+          location / {
+            proxy_pass https://127.0.0.1:5000;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade \$http_upgrade;
+            proxy_set_header Connection keep-alive;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+
+            proxy_set_header X-Forwarded-Port \$server_port;
+
+            # Rewrite upstream Location headers so redirects don't expose the internal port (5000)
+            # This handles cases where Kestrel generates a redirect to https://...:5000
+            proxy_redirect https://127.0.0.1:5000/ https://\$host/;
+            proxy_redirect http://127.0.0.1:5194/ http://\$host/;
+          }
+      }
+      EOF
+
+      ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/myapp
+
+      log "Testing nginx and reloading nginx"
+
+      nginx -t && systemctl reload nginx
+
+      log "nginx tested and reloaded" 
+
+      log "Attempting to obtain Let's Encrypt certificate for $DOMAIN"
+      if certbot --nginx -d "$DOMAIN" --agree-tos --non-interactive -m "$EMAIL" --redirect; then
+        log "certbot succeeded"
+      else
+        log "certbot failed (check DNS/ports), continuing without TLS"
+      fi
+
+      log "Prerequisites setup finished. Logs: $LOGFILE"
+  - path: /usr/local/bin/start_app_and_wait.sh
+    permissions: 0754
+    owner: root:repository
+    content: |
+      #!/bin/bash
+      mkdir -p /app-logs
+      APP_LOGS="/app-logs/app.log"
+      PROVISION_LOG="/app-logs/ready_provision.log"
+      APP_READY_LOG="app-logs/ready.txt"
+
+      log() {
+        local timestamp
+        timestamp="$(date -Iseconds)"
+        echo "[$timestamp] $*" | tee -a $APP_LOGS
+      }
+
+      provision_log() {
+        local timestamp
+        timestamp="$(date -Iseconds)"
+        echo "[$timestamp] $*" | tee -a $PROVISION_LOG
+      }
+
+      ready_log() {
+        local timestamp
+        timestamp="$(date -Iseconds)"
+        echo "[$timestamp] $*" | tee -a 
+      }  
+
+
+      # Truncate logs
+      echo "" > $APP_LOGS
+      echo "" > $PROVISION_LOG
+
+      # Remove ready flag before building 
+      if [ -f "$APP_READY_LOG" ]; then
+          rm "$APP_READY_LOG"
+      fi
+
+
+      log "Trying to publish app again (in case of changes)" 
+      dotnet publish --project /dotpics -c Release -o /dotpics/publish
+
+      if command -v systemctl >/dev/null 2>&1; then
+        if systemctl list-unit-files --type=service | grep -q '^myapp.service'; then
+          log "myapp.service already installed; attempting to start it"
+          systemctl daemon-reload || true
+          systemctl restart myapp.service || log "systemctl restart myapp.service returned non-zero"
+        fi
+        sleep 1
+      fi
+
+      if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet myapp.service; then
+        log "myapp.service is active; not starting app with nohup"
+      else
+        log "Service not active or systemd missing; falling back to nohup start"
+        nohup dotnet run --project /dotpics >> "$APP_LOGS" 2>&1 &
+        log "App started in background via nohup"
+      fi
+
+      log "Checking if mongodb service is running"
+      if ! systemctl is-active --quiet mongod.service; then
+          echo "Starting MongoDB..."
+          sudo systemctl start mongod.service
+      fi
+
 
 runcmd:
   - [ bash, "/usr/local/bin/setup_prereqs.sh" ]
   - ufw allow 80/tcp || echo "ufw allow failed(80)"
   - ufw allow 443/tcp || echo "ufw allow failed(443)"
   - ufw reload
+  - [ bash, "/usr/local/bin/start_app_and_wait.sh"]
   - echo "Hello world!, from cloud-init!" 
