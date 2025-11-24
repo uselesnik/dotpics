@@ -5,7 +5,7 @@ mkdir -p /app-logs
 APP_LOGS="/app-logs/app.log"
 PROVISION_LOG="/app-logs/ready_provision.log"
 APP_READY_LOG="/app-logs/ready.txt"
-APP_PUBLISH_DIR="/dotpics/bin/Release/net8.0"
+APP_PUBLISH_DIR="/dotpics-publish"
 APP_PUBLISH_NAME="DotPic.dll"
 
 log() {
@@ -40,7 +40,7 @@ cd /dotpics || { log "Failed to move to project directory (Does it exist?)"; exi
 
 log "Trying to publish app again (in case of changes)" 
 PUBLISHED=0
-if dotnet publish --project /dotpics -c Release; then 
+if dotnet publish --project /dotpics -c Release -o "$APP_PUBLISH_DIR"; then 
   PUBLISHED=1
 fi
 

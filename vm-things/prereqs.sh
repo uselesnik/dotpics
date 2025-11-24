@@ -8,6 +8,8 @@ DOMAIN="${DOMAIN:-devops-sk-21.lrk.si}"
 EMAIL="${EMAIL:-eg98918@student.uni-lj.si}"
 APP_PROJECT_DIR="/dotpics"
 APP_GIT_LINK="https://github.com/uselesnik/dotpics.git"
+APP_PUBLISH_DIR="/dotpics-publish"
+APP_PUBLISH_NAME="DotPic.dll"
 
 log () { 
     local ts
@@ -85,17 +87,17 @@ if [ -f "DotPic.csproj" ]; then
 fi
 
 log "Making service for myapp" 
-cat > /etc/systemd/system/myapp.service <<'EOF'
+cat > /etc/systemd/system/myapp.service <<EOF
 [Unit]
 Description=My .NET App service
 After=network.target
 
 [Service]
 # Run the published DLL for best performance. Working directory points to the publish output.
-WorkingDirectory=/dotpics-publish
-# ExecStart runs the published dll. Ensure `dotnet publish` has been run to produce this file.
-ExecStart=/usr/bin/dotnet /dotpics-publish/DotPic.dll
-StandardOutput=append:/app-logs/myapp.log
+WorkingDirectory=$APP_PUBLISH_DIR
+# ExecStart runs the published dll. Ensure dotnet publish has been run to produce this file.
+ExecStart=/usr/bin/dotnet $APP_PUBLISH_DIR/$APP_PUBLISH_NAME
+StandardOutput=append:$LOGDIR/myapp.log
 StandardError=inherit
 Restart=always
 RestartSec=5
