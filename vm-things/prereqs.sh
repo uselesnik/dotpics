@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+# set -euo pipefail
 
 LOGDIR="/app-logs"
 mkdir -p "$LOGDIR"
@@ -18,7 +18,7 @@ log () {
 # Truncate when running for the first time
 log "Installing packages (curl, nginx, git)" > "$LOGFILE" 
 
-apt-get update -y
+apt-get update -y || log "There was issues updating packages"
 
 apt-get install -y software-properties-common curl nginx certbot python3-certbot-nginx git
 
@@ -27,16 +27,19 @@ log "Installed packages"
 log "Clonning project repository" 
 
 cd / 
-git clone "$APP_GIT_LINK"
-
-if [ -d "$APP_PROJECT_DIR" ]; then
-    log "Repository correctly cloned to $APP_PROJECT_DIR !" 
+if git clone "$APP_GIT_LINK"; then 
+  log "Cloned repository" 
 else 
-    log "Critical failure! Unable to clone app, check github link: $APP_GIT_LINK"
-    exit 1
+  if [ -d "$APP_PROJECT_DIR" ]; then
+      log "Repository correctly cloned to $APP_PROJECT_DIR !" 
+      log "Pulling just in case" 
+      cd "$APP_PROJECT_DIR" || echo "This should never fail :D"
+      git pull origin main
+  else 
+      log "Critical failure! Unable to clone app, check github link: $APP_GIT_LINK"
+      exit 1
+  fi  
 fi
-
-log "Cloned repository" 
 
 log "Adding dotnet backport"
 
@@ -67,15 +70,14 @@ log "Enabled and started mongoDB"
 
 log "Getting required dotnet packages" 
 
-cd "$APP_PROJECT_DIR"
+cd "$APP_PROJECT_DIR" || { log "Failed to move into repository dir"; exit; }
 
 dotnet add package MongoDB.Driver
 dotnet add package Microsoft.Extensions.Options
-dotnet update package MongoDB.Driver
 
 log "Publishing dotnet APP" 
 if [ -f "DotPic.csproj" ]; then
-    if dotnet publish -c Release ; then
+    if dotnet publish -c Release -o /dotpics-publish; then
       log "Published project with success!"
     else 
       log "Failed to publish project!"
@@ -90,9 +92,9 @@ After=network.target
 
 [Service]
 # Run the published DLL for best performance. Working directory points to the publish output.
-WorkingDirectory=/dotpics/bin/Release/net8.0/
+WorkingDirectory=/dotpics-publish
 # ExecStart runs the published dll. Ensure `dotnet publish` has been run to produce this file.
-ExecStart=/usr/bin/dotnet /dotpics/bin/Release/net8.0/DotPic.dll
+ExecStart=/usr/bin/dotnet /dotpics-publish/DotPic.dll
 StandardOutput=append:/app-logs/myapp.log
 StandardError=inherit
 Restart=always
@@ -110,7 +112,7 @@ WantedBy=multi-user.target
 EOF
 
 log "Reloading daemon" 
-systemctl daemon-reload
+systemctl daemon-reload || true
 
 log "Enabling myapp.service"
 systemctl enable myapp.service || log "systemctl enable returned non-zero (maybe already enabled)"

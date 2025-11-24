@@ -4,62 +4,52 @@ mkdir -p /app-logs
 
 APP_LOGS="/app-logs/app.log"
 PROVISION_LOG="/app-logs/ready_provision.log"
-APP_READY_LOG="app-logs/ready.txt"
+APP_READY_LOG="/app-logs/ready.txt"
+APP_PUBLISH_DIR="/dotpics/bin/Release/net8.0"
+APP_PUBLISH_NAME="DotPic.dll"
 
 log() {
   local timestamp
   timestamp="$(date -Iseconds)"
-  echo "[$timestamp] $*" | tee -a $APP_LOGS
+  echo "[$timestamp] $*" | tee -a "$APP_LOGS"
 }
 
 provision_log() {
   local timestamp
   timestamp="$(date -Iseconds)"
-  echo "[$timestamp] $*" | tee -a $PROVISION_LOG
+  echo "[$timestamp] $*" | tee -a "$PROVISION_LOG"
 }
 
 ready_log() {
   local timestamp
   timestamp="$(date -Iseconds)"
-  echo "[$timestamp] $*" | tee -a 
+  echo "[$timestamp] $*" | tee -a "$APP_READY_LOG"
 }  
 
 
 # Truncate logs
-echo "" > $APP_LOGS
-echo "" > $PROVISION_LOG
+echo "" > "$APP_LOGS"
+echo "" > "$PROVISION_LOG"
 
 # Remove ready flag before building 
 if [ -f "$APP_READY_LOG" ]; then
     rm "$APP_READY_LOG"
 fi
 
+cd /dotpics || { log "Failed to move to project directory (Does it exist?)"; exit; }
 
 log "Trying to publish app again (in case of changes)" 
-dotnet publish --project /dotpics -c Release
+PUBLISHED=0
+if dotnet publish --project /dotpics -c Release; then 
+  PUBLISHED=1
+fi
 
 if command -v systemctl >/dev/null 2>&1; then
   if systemctl list-unit-files --type=service | grep -q '^myapp.service'; then
     log "myapp.service already installed; attempting to start it"
     systemctl daemon-reload || true
     systemctl restart myapp.service || log "systemctl restart myapp.service returned non-zero"
-#   else
-#     attempts=$attempts-1
-#     if [ "$attempts" -lt 0 ]; then
-#         break
-#     fi
-    # if [ -x /usr/local/bin/start_myapp_service.sh ]; then
-    #   log "Found /usr/local/bin/start_myapp_service.sh; running to create/start service"
-    #   /usr/local/bin/start_myapp_service.sh || log "start_myapp_service.sh returned non-zero"
-    # elif [ -x ./start_myapp_service.sh ]; then
-    #   log "Found ./start_myapp_service.sh in repo; running to create/start service"
-    #   ./start_myapp_service.sh || log "./start_myapp_service.sh returned non-zero"
-    # else
-    #   log "No service helper found; will attempt to start service directly if unit exists"
-    # fi
   fi
-
-  # Give systemd a moment to settle
   sleep 1
 fi
 
@@ -67,7 +57,13 @@ if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet myapp.ser
   log "myapp.service is active; not starting app with nohup"
 else
   log "Service not active or systemd missing; falling back to nohup start"
-  nohup dotnet run --project /dotpics >> "$APP_LOGS" 2>&1 &
+  if $PUBLISHED; then
+    cd "$APP_PUBLISH_DIR" || { log "How is the app published, but the directory doesn't exist?"; exit; }
+    nohup dotnet "$APP_PUBLISH_DIR/$APP_PUBLISH_NAME" >> "$APP_LOGS" 2>&1 &
+  else
+    cd "$APP_PROJECT_DIR" || { log "The Project directory doesn't exist?"; exit; }
+    nohup dotnet run --project /dotpics >> "$APP_LOGS" 2>&1 &
+  fi
   log "App started in background via nohup"
 fi
 
