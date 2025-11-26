@@ -11,36 +11,36 @@ APP_GIT_LINK="https://github.com/uselesnik/dotpics.git"
 APP_PUBLISH_DIR="/dotpics-publish"
 APP_PUBLISH_NAME="DotPic.dll"
 
-log () { 
+log () {
     local ts
     ts="$(date -Iseconds)"
     echo "[$ts] $*" | tee -a "$LOGFILE"
 }
 
 # Truncate when running for the first time
-log "Installing packages (curl, nginx, git)" > "$LOGFILE" 
+log "Installing packages (curl, nginx, git)" > "$LOGFILE"
 
 apt-get update -y || log "There was issues updating packages"
 
-apt-get install -y software-properties-common curl nginx certbot python3-certbot-nginx git
+apt-get install -y software-properties-common curl nginx certbot python3-certbot-nginx git lsb-release
 
 log "Installed packages"
 
-log "Clonning project repository" 
+log "Clonning project repository"
 
-cd / 
-if git clone "$APP_GIT_LINK"; then 
-  log "Cloned repository" 
-else 
+cd /
+if git clone "$APP_GIT_LINK"; then
+  log "Cloned repository"
+else
   if [ -d "$APP_PROJECT_DIR" ]; then
-      log "Repository correctly cloned to $APP_PROJECT_DIR !" 
-      log "Pulling just in case" 
+      log "Repository correctly cloned to $APP_PROJECT_DIR !"
+      log "Pulling just in case"
       cd "$APP_PROJECT_DIR" || echo "This should never fail :D"
       git pull origin main
-  else 
+  else
       log "Critical failure! Unable to clone app, check github link: $APP_GIT_LINK"
       exit 1
-  fi  
+  fi
 fi
 
 log "Adding dotnet backport"
@@ -54,39 +54,55 @@ log "Adding mongodb repo"
 curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg --dearmor
 echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-8.0.list
 
-log "MongoDB repo added" 
+log "MongoDB repo added"
 
-log "Installing dotnet and mongodb"
+log "Adding redis repo"
+
+curl -fsSL https://packages.redis.io/gpg | gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
+sudo chmod 644 /usr/share/keyrings/redis-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list
+
+log "Redis repo Added"
+
+log "Installing dotnet, mongodb and redis"
 
 apt-get update -y
-apt-get install -y dotnet-sdk-8.0 mongodb-org
+apt-get install -y dotnet-sdk-8.0 mongodb-org redis
 
-log "Succesfully installed dotnet and mongodb" 
+log "Succesfully installed dotnet, mongodb, redis"
 
 log "Enabling and starting mongoDB service"
 
 systemctl enable mongod
 systemctl start mongod
 
-log "Enabled and started mongoDB" 
+log "Enabled and started mongoDB"
 
-log "Getting required dotnet packages" 
+log "Enabling and starting redis service"
+
+systemctl enable redis-server
+systemctl start redis-server
+
+log "Redis server Enabled and Started"
 
 cd "$APP_PROJECT_DIR" || { log "Failed to move into repository dir"; exit; }
 
+log "Getting required dotnet packages"
+
 dotnet add package MongoDB.Driver
 dotnet add package Microsoft.Extensions.Options
+dotnet add package StackExchange.Redis
 
-log "Publishing dotnet APP" 
+log "Publishing dotnet APP"
 if [ -f "DotPic.csproj" ]; then
-    if dotnet publish -c Release -o /dotpics-publish; then
+    if dotnet publish /dotpics/DotPic.csproj -c Release -o /dotpics-publish; then
       log "Published project with success!"
-    else 
+    else
       log "Failed to publish project!"
     fi
 fi
 
-log "Making service for myapp" 
+log "Making service for myapp"
 cat > /etc/systemd/system/myapp.service <<EOF
 [Unit]
 Description=My .NET App service
@@ -119,7 +135,7 @@ systemctl daemon-reload || true
 log "Enabling myapp.service"
 systemctl enable myapp.service || log "systemctl enable returned non-zero (maybe already enabled)"
 
-log "preparing nginx configuration" 
+log "preparing nginx configuration"
 log "Writing nginx site config for $DOMAIN"
 NGINX_CONF="/etc/nginx/sites-available/myapp"
 cat > "$NGINX_CONF" <<EOF

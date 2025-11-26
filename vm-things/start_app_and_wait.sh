@@ -40,7 +40,7 @@ cd /dotpics || { log "Failed to move to project directory (Does it exist?)"; exi
 
 log "Trying to publish app again (in case of changes)" 
 PUBLISHED=0
-if dotnet publish --project /dotpics -c Release -o "$APP_PUBLISH_DIR"; then 
+if dotnet publish /dotpics/DotPic.csproj -c Release -o "$APP_PUBLISH_DIR"; then
   PUBLISHED=1
 fi
 
