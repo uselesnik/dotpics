@@ -53,6 +53,67 @@ dotnet run --urls="http://localhost:5000"
 ### 5. Access the Application
 Open your browser and navigate to: http://localhost:5000
 
+# Asciinema demonstration
+The video is at 2x speed, and with some spelling mistakes, because I forgot to switch to sudo user before running some commands. Be aware this video does not demonstrate setting up certificates, nginx configuration or making a systemd service to run the app. 
+[![asciicast](https://asciinema.org/a/Pe7yFyo1J8Uhw5cWYPjapmNAv.svg)](https://asciinema.org/a/Pe7yFyo1J8Uhw5cWYPjapmNAv)
+# Example of service file and nginx config
+## Systemd-service
+By enabling this service it will always run on startup, also can be restarted with `systemctl restart myapp.service` with sudo privileges. 
+Remember to replace variables such as `$APP_PUBLISH_DIR` with actual values 
+```
+[Unit]
+Description=My .NET App service
+After=network.target
+
+[Service]
+# Run the published DLL for best performance. Working directory points to the publish output.
+WorkingDirectory=$APP_PUBLISH_DIR
+# ExecStart runs the published dll. Ensure dotnet publish has been run to produce this file.
+ExecStart=/usr/bin/dotnet $APP_PUBLISH_DIR/$APP_PUBLISH_NAME
+StandardOutput=append:$LOGDIR/myapp.log
+StandardError=inherit
+Restart=always
+RestartSec=5
+# This will allow you to restart the service with name set here
+SyslogIdentifier=myapp
+User=root
+Environment=ASPNETCORE_ENVIRONMENT=Production
+# Use ASPNETCORE_URLS so the process listens on the loopback TLS port expected by nginx
+Environment=ASPNETCORE_URLS=https://127.0.0.1:5000
+Environment=ASPNETCORE_HTTPS_PORT=443
+Environment=ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
+
+[Install]
+WantedBy=multi-user.target
+```
+## nginx configuration
+before certbot letsencrypt certificate configuration you can write something like this in the nginx configuration files (`/etc/nginx/sites-available/myapp`). Running certbot will append information to the file afterwards. Variables like `$DOMAIN` must be replaced with actual values. 
+```
+server {
+    listen 80;
+    server_name $DOMAIN;
+
+    location / {
+      # This should mirror the URLS your app will be runnign on
+      proxy_pass https://127.0.0.1:5000;
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade \$http_upgrade;
+      proxy_set_header Connection keep-alive;
+      proxy_set_header Host \$host;
+      proxy_set_header X-Real-IP \$remote_addr;
+      proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto \$scheme;
+
+      proxy_set_header X-Forwarded-Port \$server_port;
+
+      # Rewrite upstream Location headers so redirects don't expose the internal port (5000)
+      # This handles cases where Kestrel generates a redirect to https://...:5000
+      proxy_redirect https://127.0.0.1:5000/ https://\$host/;
+      proxy_redirect http://127.0.0.1:5194/ http://\$host/;
+    }
+}
+```
+
 ## Project Structure
 ```
 DotPic/
@@ -131,7 +192,6 @@ export ASPNETCORE_ENVIRONMENT="Development"
 - MongoDB - NoSQL database
 - Bootstrap - CSS framework
 - Bootstrap Icons - Icon library
-
 
 ---
 
