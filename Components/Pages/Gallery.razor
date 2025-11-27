@@ -2,19 +2,26 @@
 @using DotPic.Models
 @using DotPic.Services
 @using DotPic.Utilities
-@inject IJSRuntime JSRuntime
 @inject IImageService ImageService
+@inject IRedisService RedisService
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Image Gallery - DotPic</PageTitle>
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>🖼️ Image Gallery</h1>
+        <h1>Image Gallery</h1>
         <a href="/upload" class="btn btn-primary">
-            📤 Upload New Image
+            Upload New Image
         </a>
     </div>
 
+    <!-- Simple Redis Status 
+    <div class="alert alert-info mb-3">
+        <small>View counting: @(IsRedisAvailable ? "Active" : "Not available")</small>
+        <button class="btn btn-sm btn-outline-primary ms-2" @onclick="TestRedis">Test Redis</button>
+    </div>
+        -->
     <!-- Search Bar -->
     <div class="row mb-4">
         <div class="col-md-6">
@@ -76,12 +83,18 @@
             {
                 <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
                     <div class="card h-100 image-card">
-                        <div class="card-img-top-container" style="height: 200px; overflow: hidden;">
+                        <div class="card-img-top-container position-relative" style="height: 200px; overflow: hidden;">
                             <img src="@ImageHelper.ConvertToBase64(image.ImageData, image.ContentType)" 
                                  class="card-img-top" 
                                  alt="@image.OriginalFileName"
                                  style="height: 100%; width: 100%; object-fit: cover; cursor: pointer;"
                                  @onclick="() => ShowImageDetails(image)" />
+                            <!-- View Count Badge -->
+                            <div class="position-absolute top-0 end-0 m-1">
+                                <span class="badge bg-dark">
+                                    @GetViewCount(image.Id) views
+                                </span>
+                            </div>
                         </div>
                         <div class="card-body">
                             <h6 class="card-title text-truncate" title="@image.OriginalFileName">
@@ -99,7 +112,7 @@
                         <div class="card-footer bg-transparent">
                             <button class="btn btn-sm btn-outline-danger w-100" 
                                     @onclick="() => DeleteImage(image)">
-                                🗑️ Delete
+                                Delete
                             </button>
                         </div>
                     </div>
@@ -112,11 +125,16 @@
 <!-- Image Detail Modal -->
 @if (selectedImage != null)
 {
-    <div class="modal show d-block" style="background-color: rgba(0,0,0,0.8);" tabindex="-1">
+    <div class="modal show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">@selectedImage.OriginalFileName</h5>
+                    <div class="ms-auto">
+                        <span class="badge bg-primary me-2">
+                            @GetViewCount(selectedImage.Id) views
+                        </span>
+                    </div>
                     <button type="button" class="btn-close" @onclick="CloseImageDetails"></button>
                 </div>
                 <div class="modal-body text-center">
@@ -131,7 +149,11 @@
                         <p><strong>Size:</strong> @ImageHelper.FormatFileSize(selectedImage.FileSize)</p>
                         <p><strong>Dimensions:</strong> @selectedImage.Width x @selectedImage.Height</p>
                         <p><strong>Uploaded:</strong> @selectedImage.UploadDate.ToString("f")</p>
+                        <p><strong>Views:</strong> @GetViewCount(selectedImage.Id)</p>
                     </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseImageDetails">Close</button>
                 </div>
             </div>
         </div>
@@ -143,30 +165,99 @@
     private StoredImage? selectedImage;
     private string searchTerm = "";
     private Timer? searchTimer;
+    private Dictionary<string, long> imageViews = new();
+    private bool IsRedisAvailable = false;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadImages();
+        await TestRedisConnection();
+        await LoadViewCounts();
     }
 
     private async Task LoadImages()
     {
-        if (string.IsNullOrEmpty(searchTerm))
+        try
         {
-            images = await ImageService.GetAllImagesAsync();
+            if (string.IsNullOrEmpty(searchTerm))
+            {
+                images = await ImageService.GetAllImagesAsync();
+            }
+            else
+            {
+                images = await ImageService.SearchImagesAsync(searchTerm);
+            }
+            StateHasChanged();
         }
-        else
+        catch (Exception ex)
         {
-            images = await ImageService.SearchImagesAsync(searchTerm);
+            Console.WriteLine($"Error loading images: {ex.Message}");
         }
+    }
+
+    private async Task TestRedisConnection()
+    {
+        try
+        {
+            // Simple test - try to get a non-existent key
+            await RedisService.GetViewCountAsync("test-connection");
+            IsRedisAvailable = true;
+            Console.WriteLine("Redis connection test: SUCCESS");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            IsRedisAvailable = false;
+            Console.WriteLine($"Redis connection test: FAILED - {ex.Message}");
+            StateHasChanged();
+        }
+    }
+    
+    private async Task LoadViewCounts()
+    {
+        if (images == null) return;
+        
+        Console.WriteLine("Loading view counts...");
+        
+        foreach (var image in images)
+        {
+            if (image.Id != null)
+            {
+                try
+                {
+                    var views = await RedisService.GetViewCountAsync(image.Id);
+                    imageViews[image.Id] = views;
+                    Console.WriteLine($"Image {image.Id}: {views} views");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error loading view count for {image.Id}: {ex.Message}");
+                    imageViews[image.Id] = 0;
+                }
+            }
+        }
+        
         StateHasChanged();
+    }
+
+    private string GetViewCount(string? imageId)
+    {
+        if (imageId == null || !imageViews.ContainsKey(imageId))
+            return "0";
+        
+        return imageViews[imageId].ToString();
+    }
+
+    private async Task TestRedis()
+    {
+        await TestRedisConnection();
+        await LoadViewCounts();
     }
 
     private void OnSearch(ChangeEventArgs e)
     {
         searchTerm = e.Value?.ToString() ?? "";
         
-        // Debounce search
         searchTimer?.Dispose();
         searchTimer = new Timer(async _ => 
         {
@@ -180,8 +271,25 @@
         await LoadImages();
     }
 
-    private void ShowImageDetails(StoredImage image)
+    private async void ShowImageDetails(StoredImage image)
     {
+        // Track the view
+        if (image.Id != null && IsRedisAvailable)
+        {
+            try
+            {
+                await RedisService.IncrementViewCountAsync(image.Id);
+                // Update local count
+                imageViews[image.Id] = await RedisService.GetViewCountAsync(image.Id);
+                Console.WriteLine($"View counted for {image.Id}: {imageViews[image.Id]} views");
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error counting view: {ex.Message}");
+            }
+        }
+        
         selectedImage = image;
         StateHasChanged();
     }
@@ -199,7 +307,7 @@
             if (image.Id != null)
             {
                 await ImageService.DeleteImageAsync(image.Id);
-                await LoadImages(); // Refresh the list
+                await LoadImages();
             }
         }
     }

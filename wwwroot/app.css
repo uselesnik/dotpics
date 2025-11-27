@@ -49,3 +49,43 @@ h1:focus {
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
 }
+
+/* Most Popular Images Styling */
+.popular-image-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: 2px solid transparent;
+}
+
+.popular-image-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    border-color: #ffc107;
+}
+
+.popular-image-card .card-img-top {
+    transition: transform 0.2s ease-in-out;
+}
+
+.popular-image-card:hover .card-img-top {
+    transform: scale(1.05);
+}
+
+/* Badge styling for view counts */
+.badge.bg-danger {
+    font-size: 0.7em;
+    font-weight: bold;
+}
+
+.badge.bg-dark {
+    font-size: 0.7em;
+    font-weight: bold;
+}
+
+/* Card header for most popular section */
+.card-header.bg-warning {
+    border-bottom: 2px solid #ffc107;
+}
+
+.navbar-purple {
+    background-color: #6f42c1 !important; /* Purple */
+}

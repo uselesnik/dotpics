@@ -1,5 +1,6 @@
 using DotPic.Models;
 using DotPic.Services;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,9 +15,15 @@ var mongoSettings = new MongoDbSettings
     DatabaseName = builder.Configuration["MongoDbSettings:DatabaseName"] ?? "DotPicDb"
 };
 
+// Redis configuration
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp => 
+    ConnectionMultiplexer.Connect(builder.Configuration["Redis:ConnectionString"] ?? "localhost:6379")
+);
+
 builder.Services.AddSingleton(mongoSettings);
 builder.Services.AddSingleton<IUserService, UserService>();
 builder.Services.AddSingleton<IImageService, ImageService>(); 
+builder.Services.AddSingleton<IRedisService, RedisService>(); // Add Redis service
 
 var app = builder.Build();
 

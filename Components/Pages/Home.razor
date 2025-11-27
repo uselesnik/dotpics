@@ -1,27 +1,121 @@
 ﻿@page "/"
 
-<PageTitle>DotPic</PageTitle>
+<PageTitle>DotPic - Your Personal Image Cloud</PageTitle>
 
-<h1>Hello, world!</h1>
-
-<p>Welcome to your new app.</p>
-
-<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
-
-<p>Current count: @currentCount</p>
-
-@if (currentCount > 0)
-{
-    <div class="alert alert-success">
-        <strong>SUCCESS!</strong> Your custom button is working!
+<div class="container mt-5">
+    <div class="text-center mb-5">
+        <h1 class="display-4 mb-3">DotPic</h1>
+        <p class="lead">Store, organize, and access your images from anywhere</p>
     </div>
-}
+
+    <div class="row mb-5">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-body text-center p-5">
+                    <h2 class="card-title mb-4">Your Personal Image Cloud</h2>
+                    <p class="card-text mb-4">
+                        DotPic is a modern image storage solution that lets you upload, organize, 
+                        and access your photos and images from any device. Built with cutting-edge 
+                        web technologies, it provides a seamless experience for managing your visual memories.
+                    </p>
+                    <div class="mt-4">
+                        <a href="/upload" class="btn btn-primary btn-lg me-3">Get Started</a>
+                        <a href="/gallery" class="btn btn-outline-secondary btn-lg">View Gallery</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-5">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3" style="font-size: 2rem;">📤</div>
+                    <h4 class="card-title">Easy Upload</h4>
+                    <p class="card-text">
+                        Drag and drop your images with instant preview. Support for all major image formats 
+                        including JPG, PNG, GIF, and WebP.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3" style="font-size: 2rem;">🖼️</div>
+                    <h4 class="card-title">Beautiful Gallery</h4>
+                    <p class="card-text">
+                        Browse your images in an elegant grid layout. Search by filename, description, 
+                        or tags to quickly find what you're looking for.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3" style="font-size: 2rem;">🔒</div>
+                    <h4 class="card-title">Secure Storage</h4>
+                    <p class="card-text">
+                        Your images are stored securely with automatic backup. Access them anytime, 
+                        anywhere with a simple web interface.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Features</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-2"> Unlimited image uploads</li>
+                        <li class="mb-2"> Fast image preview and loading</li>
+                        <li class="mb-2"> Smart search and filtering</li>
+                        <li class="mb-2"> Responsive design for all devices</li>
+                        <li class="mb-2"> Image metadata tracking</li>
+                        <li class="mb-2"> Secure cloud storage</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Getting Started</h5>
+                </div>
+                <div class="card-body">
+                    <ol class="mb-0">
+                        <li class="mb-2">Click "Get Started" to upload your first image</li>
+                        <li class="mb-2">Add descriptions and tags for better organization</li>
+                        <li class="mb-2">Browse your collection in the gallery</li>
+                        <li class="mb-2">Use search to quickly find specific images</li>
+                        <li>Access your images from any device with a web browser</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mt-5">
+        <div class="card bg-light">
+            <div class="card-body py-4">
+                <h3 class="card-title">Ready to organize your images?</h3>
+                <p class="card-text mb-3">Start building your personal image cloud today</p>
+                <a href="/upload" class="btn btn-primary btn-lg">Upload Your First Image</a>
+            </div>
+        </div>
+    </div>
+</div>
 
 @code {
-    private int currentCount = 0;
-
-    private void IncrementCount()
-    {
-        currentCount++;
-    }
+    // No code needed for this homepage
 }

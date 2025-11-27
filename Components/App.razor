@@ -1,19 +1,26 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
     <link rel="stylesheet" href="app.css" />
-    <link rel="stylesheet" href="DotPic.styles.css" />
     <HeadOutlet @rendermode="InteractiveServer" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <!--<link rel="icon" type="image/x-icon" href="../wwwroot/favicon.png">-->
 </head>
-
 <body>
     <Routes @rendermode="InteractiveServer" />
+    
+    <!-- Fix for Chrome reference errors in Firefox -->
+    <script>
+        // Prevent Chrome-specific errors in Firefox
+        if (typeof chrome === 'undefined') {
+            window.chrome = null;
+        }
+    </script>
+    
     <script src="_framework/blazor.web.js"></script>
 </body>
-
 </html>
