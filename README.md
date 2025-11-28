@@ -56,6 +56,8 @@ Open your browser and navigate to: http://localhost:5000
 # Asciinema demonstration
 The video is at 2x speed, and with some spelling mistakes, because I forgot to switch to sudo user before running some commands. Be aware this video does not demonstrate setting up certificates, nginx configuration or making a systemd service to run the app. 
 [![asciicast](https://asciinema.org/a/Pe7yFyo1J8Uhw5cWYPjapmNAv.svg)](https://asciinema.org/a/Pe7yFyo1J8Uhw5cWYPjapmNAv)
+## Asciinema Vagrant 
+[![asciicast](https://asciinema.org/a/zQnVGylzy6KpOIozxcLVVlBKy.svg)](https://asciinema.org/a/zQnVGylzy6KpOIozxcLVVlBKy)
 # Example of service file and nginx config
 ## Systemd-service
 By enabling this service it will always run on startup, also can be restarted with `systemctl restart myapp.service` with sudo privileges. 
