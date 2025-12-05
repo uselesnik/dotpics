@@ -1,28 +1,38 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿<nav class="navbar navbar-expand-lg navbar-dark bg-primary navbar-purple">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">DotPic</a>
+        <a class="navbar-brand" href="/">DotPic</a>
+        <button class="navbar-toggler" type="button" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="@NavMenuCssClass">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+                        Home
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="/upload">
+                        Upload
+                    </NavLink>
+                </li>
+                <li class="nav-item">
+                    <NavLink class="nav-link" href="/gallery">
+                        Gallery
+                    </NavLink>
+                </li>
+            </ul>
+        </div>
     </div>
-</div>
+</nav>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+@code {
+    private bool collapseNavMenu = true;
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-    <NavLink class="nav-link" href="/">
-        <span class="bi bi-house-door-fill"></span> Home
-    </NavLink>
-</div>
-<div class="nav-item px-3">
-    <NavLink class="nav-link" href="/upload">
-        <span class="bi bi-cloud-upload-fill"></span> Upload
-    </NavLink>
-</div>
-<div class="nav-item px-3">
-    <NavLink class="nav-link" href="/gallery">
-        <span class="bi bi-images"></span> Gallery
-    </NavLink>
-</div>
+    private string NavMenuCssClass => collapseNavMenu ? "navbar-collapse collapse" : "navbar-collapse";
 
-    </nav>
-</div>
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

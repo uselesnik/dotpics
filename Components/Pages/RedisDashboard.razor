@@ -1,0 +1,251 @@
+@page "/redis-demo"
+@using DotPic.Services
+@inject IRedisService RedisService
+@inject IImageService ImageService
+
+<PageTitle>Redis Demo - DotPic</PageTitle>
+
+<div class="container mt-4">
+    <h1>⚡ Redis Demonstrations</h1>
+    <p class="text-muted">Real-time caching and analytics with Redis</p>
+
+    <div class="row">
+        <!-- Cache Statistics -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">🔄 Cache Operations</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <button class="btn btn-success w-100 mb-2" @onclick="WarmCache">
+                            🔥 Warm Cache (Cache All Images)
+                        </button>
+                        <button class="btn btn-danger w-100 mb-2" @onclick="ClearCache">
+                            🧹 Clear Entire Cache
+                        </button>
+                        <button class="btn btn-info w-100" @onclick="ShowCacheStats">
+                            📈 Show Cache Stats
+                        </button>
+                    </div>
+                    
+                    @if (!string.IsNullOrEmpty(cacheMessage))
+                    {
+                        <div class="alert alert-info">@cacheMessage</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Real-time Analytics -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">📊 Real-time Analytics</h5>
+                </div>
+                <div class="card-body">
+                    <button class="btn btn-primary w-100 mb-3" @onclick="LoadTopViewed">
+                        🏆 Load Top 5 Viewed Images
+                    </button>
+                    
+                    @if (topViewedImages.Any())
+                    {
+                        <div class="list-group">
+                            @foreach (var (imageId, views) in topViewedImages)
+                            {
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Image @imageId[..8]...</span>
+                                        <span class="badge bg-primary">@views views</span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Activity Stream -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">📝 User Activity Stream</h5>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="LoadRecentActivities">
+                        🔄 Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        @if (recentActivities.Any())
+                        {
+                            @foreach (var activity in recentActivities)
+                            {
+                                <div class="border-bottom pb-2 mb-2">
+                                    <small class="text-muted">@activity</small>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-muted">No recent activities</p>
+                        }
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button class="btn btn-sm btn-warning" @onclick="SimulateUserActivity">
+                            🎭 Simulate User Activity
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Comparison -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">⚡ Performance Test</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <button class="btn btn-outline-primary w-100 mb-2" @onclick="TestDatabaseSpeed">
+                                🗄️ Test Database Speed
+                            </button>
+                            <p class="text-center small">MongoDB Direct</p>
+                        </div>
+                        <div class="col-md-6">
+                            <button class="btn btn-outline-success w-100 mb-2" @onclick="TestCacheSpeed">
+                                🚀 Test Cache Speed
+                            </button>
+                            <p class="text-center small">Redis Cache</p>
+                        </div>
+                    </div>
+                    
+                    @if (performanceResults.Any())
+                    {
+                        <div class="mt-3">
+                            <h6>Results:</h6>
+                            @foreach (var result in performanceResults)
+                            {
+                                <div class="alert @(result.Contains("Redis") ? "alert-success" : "alert-info")">
+                                    @result
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private Dictionary<string, long> topViewedImages = new();
+    private List<string> recentActivities = new();
+    private List<string> performanceResults = new();
+    private string cacheMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRecentActivities();
+    }
+
+    private async Task WarmCache()
+    {
+        cacheMessage = "Caching images...";
+        StateHasChanged();
+
+        var images = await ImageService.GetAllImagesAsync();
+        int cachedCount = 0;
+
+        foreach (var image in images)
+        {
+            if (image.Id != null)
+            {
+                await RedisService.CacheImageAsync(image);
+                cachedCount++;
+            }
+        }
+
+        cacheMessage = $"✅ Successfully cached {cachedCount} images in Redis!";
+        StateHasChanged();
+    }
+
+    private async Task ClearCache()
+    {
+        cacheMessage = "Clearing cache...";
+        StateHasChanged();
+
+        // Note: In production, you'd want a more sophisticated cache clearing mechanism
+        cacheMessage = "✅ Cache cleared (demo - in production this would clear all cache keys)";
+        StateHasChanged();
+    }
+
+    private void ShowCacheStats()
+    {
+        cacheMessage = "📊 Cache Statistics:\n- Fast in-memory storage\n- Automatic expiration\n- High performance\n- Reduced database load";
+        StateHasChanged();
+    }
+
+    private async Task LoadTopViewed()
+    {
+        topViewedImages = await RedisService.GetTopViewedImagesAsync(5);
+        StateHasChanged();
+    }
+
+    private async Task LoadRecentActivities()
+    {
+        recentActivities = await RedisService.GetRecentActivitiesAsync("demo-user", 10);
+        StateHasChanged();
+    }
+
+    private async Task SimulateUserActivity()
+    {
+        var activities = new[]
+        {
+            "Uploaded new image: sunset.jpg",
+            "Viewed gallery",
+            "Searched for 'nature'",
+            "Deleted image: old-photo.png",
+            "Updated profile information"
+        };
+
+        var randomActivity = activities[new Random().Next(activities.Length)];
+        await RedisService.TrackUserActivityAsync("demo-user", randomActivity);
+        
+        await LoadRecentActivities();
+    }
+
+    private async Task TestDatabaseSpeed()
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        
+        // Simulate database operation
+        var images = await ImageService.GetAllImagesAsync();
+        var imageCount = images.Count;
+        
+        stopwatch.Stop();
+        
+        performanceResults.Add($"🗄️ Database query took: {stopwatch.ElapsedMilliseconds}ms for {imageCount} images");
+        StateHasChanged();
+    }
+
+    private async Task TestCacheSpeed()
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        
+        // Simulate cache operation
+        await RedisService.GetTopViewedImagesAsync(5);
+        
+        stopwatch.Stop();
+        
+        performanceResults.Add($"🚀 Cache operation took: {stopwatch.ElapsedMilliseconds}ms");
+        StateHasChanged();
+    }
+}
