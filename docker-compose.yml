@@ -1,0 +1,64 @@
+services:
+  app:
+    build: .
+    container_name: dotpics_app
+    restart: always
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+    volumes:
+      - data_protection:/home/app/.aspnet/DataProtection-Keys
+    ports:
+      - "8080:8080" # internal app port
+    depends_on:
+      - redis
+      - mongo
+
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    volumes:
+      - redis_data:/data
+
+
+  mongo:
+    image: mongo:7
+    container_name: mongodb
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/app.conf:/etc/nginx/conf.d/app.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - app
+
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    restart: always
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/lib/letsencrypt:/var/lib/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: /bin/sh
+    command: -c "mkdir -p /var/www/certbot && certbot certonly --webroot --webroot-path=/var/www/certbot --email eg98918@student.uni-lj.si --agree-tos --no-eff-email -d devops-vm-08.lrk.si --non-interactive 2>/dev/null || true; trap exit TERM; while :; do certbot renew --webroot --webroot-path=/var/www/certbot --keep-until-expiring --non-interactive --quiet; sleep 12h & wait $${!}; done"
+    depends_on:
+      - nginx
+
+
+volumes:
+  mongo_data:
+  redis_data:
+  data_protection:
