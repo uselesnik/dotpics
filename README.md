@@ -53,6 +53,9 @@ dotnet run --urls="http://localhost:5000"
 ### 5. Access the Application
 Open your browser and navigate to: http://localhost:5000
 
+# Using docker 
+Use the `Dockerfile` and `docker-compose.yml`, then start with `docker compose up`. The files have to be in the same directory as the project files (DotPic.csproj)
+
 # Asciinema demonstration
 The video is at 2x speed, and with some spelling mistakes, because I forgot to switch to sudo user before running some commands. Be aware this video does not demonstrate setting up certificates, nginx configuration or making a systemd service to run the app. 
 [![asciicast](https://asciinema.org/a/Pe7yFyo1J8Uhw5cWYPjapmNAv.svg)](https://asciinema.org/a/Pe7yFyo1J8Uhw5cWYPjapmNAv)
