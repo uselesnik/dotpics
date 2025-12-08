@@ -33,8 +33,13 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
-
-app.UseHttpsRedirection();
+// Only enable HTTPS redirection when the configured URLs include an HTTPS endpoint.
+// This prevents Kestrel trying to bind an HTTPS endpoint without a certificate (e.g. in containers behind nginx).
+var configuredUrls = builder.Configuration["ASPNETCORE_URLS"] ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
+if (!string.IsNullOrEmpty(configuredUrls) && configuredUrls.Contains("https", StringComparison.OrdinalIgnoreCase))
+{
+    app.UseHttpsRedirection();
+}
 app.UseStaticFiles();
 app.UseAntiforgery();
 
