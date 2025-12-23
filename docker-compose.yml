@@ -34,29 +34,64 @@ services:
     image: nginx:latest
     container_name: nginx
     restart: always
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/app.conf:/etc/nginx/conf.d/app.conf:ro
+      - ./nginx/app.conf.template:/etc/nginx/templates/app.conf.template:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    command: /bin/sh -c "envsubst '$${APP_DOMAIN}'
+        < /etc/nginx/templates/app.conf.template
+        > /etc/nginx/conf.d/app.conf
+        && nginx -g \"daemon off;\""
     depends_on:
       - app
-
-
-  certbot:
+        
+  certbot-init:
     image: certbot/certbot
-    container_name: certbot
+    container_name: certbot_init
+    environment:
+      APP_EMAIL: ${APP_EMAIL}
+      APP_DOMAIN: ${APP_DOMAIN}
+      CERTBOT_STAGING: ${CERTBOT_STAGING:-0}
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/lib/letsencrypt:/var/lib/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: /bin/sh
+    command: >
+      -c "certbot certonly
+      --webroot
+      --webroot-path=/var/www/certbot
+      --email $APP_EMAIL
+      --agree-tos
+      --no-eff-email
+      -d $APP_DOMAIN
+      --non-interactive
+      $( [ \"$CERTBOT_STAGING\" = \"1\" ] && echo '--staging' )"
+    depends_on:
+      - nginx
+        
+  certbot-renew:
+    image: certbot/certbot
+    container_name: certbot_renew
     restart: always
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt
       - /var/lib/letsencrypt:/var/lib/letsencrypt
       - ./certbot/www:/var/www/certbot
     entrypoint: /bin/sh
-    command: -c "mkdir -p /var/www/certbot && certbot certonly --webroot --webroot-path=/var/www/certbot --email eg98918@student.uni-lj.si --agree-tos --no-eff-email -d devops-vm-08.lrk.si --non-interactive 2>/dev/null || true; trap exit TERM; while :; do certbot renew --webroot --webroot-path=/var/www/certbot --keep-until-expiring --non-interactive --quiet; sleep 12h & wait $${!}; done"
+    command: >
+      -c "trap exit TERM;
+      while :; do
+        certbot renew --webroot --webroot-path=/var/www/certbot --quiet;
+        sleep 12h & wait $${!};
+      done"
     depends_on:
       - nginx
-
 
 volumes:
   mongo_data:
