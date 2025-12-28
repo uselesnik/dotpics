@@ -1,6 +1,6 @@
 services:
   app:
-    image: auradvin/dotpics:latest
+    image: auradvin/dotpics
     build: .
     container_name: dotpics_app
     restart: always
