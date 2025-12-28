@@ -179,18 +179,20 @@ DotPic/
 ## Configuration
 
 ### MongoDB Settings
+```
 {
   "MongoDbSettings": {
     "ConnectionString": "mongodb://localhost:27017",
     "DatabaseName": "DotPicDb"
   }
 }
+```
 
 ### Environment Variables
+```
 export ConnectionStrings__MongoDb="mongodb://localhost:27017"
 export ASPNETCORE_ENVIRONMENT="Development"
-
-
+```
 ## Acknowledgments
 
 - Blazor - .NET web framework using WebAssembly
