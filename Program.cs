@@ -1,6 +1,7 @@
 using DotPic.Models;
 using DotPic.Services;
 using StackExchange.Redis;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,9 +17,21 @@ var mongoSettings = new MongoDbSettings
 };
 
 // Redis configuration
-builder.Services.AddSingleton<IConnectionMultiplexer>(sp => 
-    ConnectionMultiplexer.Connect(builder.Configuration["Redis:ConnectionString"] ?? "localhost:6379")
-);
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var redisConn = builder.Configuration["Redis:ConnectionString"] ?? "localhost:6379";
+    var options = ConfigurationOptions.Parse(redisConn);
+    options.AbortOnConnectFail = false;
+    return ConnectionMultiplexer.Connect(options);
+});
+
+// Configure data protection to use Redis (shared across pods)
+builder.Services.AddDataProtection()
+    .SetApplicationName("DotPics") // important when multiple apps/pods share Redis
+    .PersistKeysToStackExchangeRedis(
+        sp => sp.GetRequiredService<IConnectionMultiplexer>(),
+        "DataProtection-Keys");
+
 
 builder.Services.AddSingleton(mongoSettings);
 builder.Services.AddSingleton<IUserService, UserService>();
