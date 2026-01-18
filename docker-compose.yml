@@ -1,6 +1,6 @@
 services:
   app:
-    image: auradvin/dotpics
+    image: auradvin/dotpics:v1
     build: .
     container_name: dotpics_app
     restart: always
@@ -32,7 +32,7 @@ services:
 
 
   nginx:
-    image: nginx:latest
+    image: nginx:stable-alpine-perl
     container_name: nginx
     restart: always
     environment:
@@ -52,7 +52,7 @@ services:
       - app
         
   certbot-init:
-    image: certbot/certbot
+    image: certbot/certbot:v5.2.2
     container_name: certbot_init
     environment:
       APP_EMAIL: ${APP_EMAIL}
@@ -77,7 +77,7 @@ services:
       - nginx
         
   certbot-renew:
-    image: certbot/certbot
+    image: certbot/certbot:v5.2.2
     container_name: certbot_renew
     restart: always
     volumes:
