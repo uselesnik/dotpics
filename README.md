@@ -11,14 +11,147 @@ A modern, cloud-based image storage application built with Blazor and MongoDB. F
 - Image Management - Delete and manage uploaded images
 - Responsive Design - Works on desktop and mobile devices
 
-
-
 ## Technology Stack
 
 - Frontend: Blazor Server (.NET 8.0)
 - Database: MongoDB (Document storage)
+- Cache: Redis
 - UI: Bootstrap 5 + Custom CSS
 - Icons: Bootstrap Icons
+- Container: Docker with multi-stage build
+- Orchestration: Kubernetes with Ingress, cert-manager
+
+## Prerequisites
+
+Before running this application, ensure you have the following installed:
+- Kubernetes cluster (e.g., minikube, kind, or cloud)
+- kubectl
+- Docker
+- Helm (for installing ingress controller and cert-manager)
+
+## Configuration
+
+Create `k8s/.env` with your secrets:
+
+```
+export EMAIL=your-email@example.com
+export DOMAIN=your-domain.com
+```
+
+**Note**: Do not commit `.env` to version control. Add it to `.gitignore`.
+
+## Kubernetes Deployment
+
+### 1. Install Nginx Ingress Controller
+
+```bash
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+helm install nginx-ingress ingress-nginx/ingress-nginx
+```
+
+### 2. Install cert-manager
+
+```bash
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --version v1.13.3 --set installCRDs=true
+```
+
+### 3. Deploy the Application
+
+Edit `k8s/.env` with your actual email and domain.
+
+```bash
+cd k8s && source .env && for f in *.yaml; do envsubst < "$f" | kubectl apply -f -; done
+```
+
+### 4. Access the Application
+
+The application will be available at `https://your-domain.com` with auto-renewing TLS certificates.
+
+## Services
+
+The application consists of 3 main services:
+- **app**: Blazor Server app (3 replicas for HA)
+- **mongo**: MongoDB database
+- **redis**: Redis cache
+
+## Persistent Volumes
+
+Data is persisted using PersistentVolumeClaims:
+- `mongo-data`: MongoDB data
+- `redis-data`: Redis data
+- `data-protection`: ASP.NET Core Data Protection keys
+
+## Readiness and Liveness Probes
+
+### App Service
+- **Readiness Probe**: HTTP GET on `/` port 8080, initial delay 5s, period 10s
+- **Liveness Probe**: HTTP GET on `/` port 8080, initial delay 30s, period 30s
+
+These values ensure the app is ready to serve traffic after startup and detect failures promptly without excessive restarts.
+
+### MongoDB
+- **Readiness Probe**: TCP socket on port 27017, initial delay 5s, period 10s
+- **Liveness Probe**: TCP socket on port 27017, initial delay 30s, period 30s
+
+TCP probes are used as MongoDB doesn't have an HTTP endpoint.
+
+### Redis
+- **Readiness Probe**: TCP socket on port 6379, initial delay 5s, period 10s
+- **Liveness Probe**: TCP socket on port 6379, initial delay 30s, period 30s
+
+Similar to MongoDB, TCP probes ensure the service is listening.
+
+## CI/CD
+
+The project uses GitHub Actions for automated building and publishing of Docker images.
+
+- **Trigger**: Push to main branch or PR
+- **Build**: Multi-stage Docker build
+- **Push**: To Docker Hub as `auradvin/dotpics`
+- **Tags**: Branch name, PR number, commit SHA
+
+Set `DOCKER_USERNAME` and `DOCKER_PASSWORD` secrets in GitHub repo.
+
+## Rolling Update and Blue/Green Deployment
+
+### Rolling Update
+The app deployment uses `maxSurge: 1` and `maxUnavailable: 0`, allowing one extra pod during update without reducing replicas.
+
+To perform rolling update:
+1. Update image tag in `app-blue-deployment.yaml`
+2. Apply: `kubectl apply -f k8s/app-blue-deployment.yaml`
+3. Monitor: `kubectl rollout status deployment/app-blue`
+
+### Blue/Green Deployment
+Two deployments: `app-blue` (v1) and `app-green` (v2).
+
+To switch to green:
+1. Ensure green deployment is ready
+2. Update service selector in `app-service.yaml` to `version: green`
+3. Apply: `kubectl apply -f k8s/app-service.yaml`
+
+For demo, v2 has a different background color.
+
+## Demo
+
+### 0-Downtime Rolling Update
+[Link to video or asciinema]
+
+### 0-Downtime Blue/Green Deployment
+[Link to video or asciinema]
+
+## Docker Compose (Local Development)
+
+Use `docker-compose.yml` for local testing.
+
+```bash
+docker-compose up -d nginx
+```
+
+Access at http://localhost:8080
 
 ## Prerequisites
 
