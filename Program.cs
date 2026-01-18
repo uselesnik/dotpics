@@ -29,7 +29,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 builder.Services.AddDataProtection()
     .SetApplicationName("DotPics") // important when multiple apps/pods share Redis
     .PersistKeysToStackExchangeRedis(
-        sp => sp.GetRequiredService<IConnectionMultiplexer>(),
+        () => ConnectionMultiplexer.Connect(builder.Configuration["Redis:ConnectionString"] ?? "localhost:6379").GetDatabase(),
         "DataProtection-Keys");
 
 
