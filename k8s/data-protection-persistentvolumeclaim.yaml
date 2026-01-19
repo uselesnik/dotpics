@@ -6,7 +6,7 @@ metadata:
   name: data-protection
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 100Mi
