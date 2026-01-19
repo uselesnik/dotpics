@@ -6,14 +6,14 @@ metadata:
     kompose.version: 1.38.0 (a8f5d1cbd)
   labels:
     app: app
-    version: blue
-  name: app-blue
+    version: green
+  name: app-green
 spec:
   replicas: 3
   selector:
     matchLabels:
       app: app
-      version: blue
+      version: green
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -26,13 +26,13 @@ spec:
         kompose.version: 1.38.0 (a8f5d1cbd)
       labels:
         app: app
-        version: blue
+        version: green
     spec:
       containers:
         - env:
             - name: ASPNETCORE_URLS
               value: http://+:8080
-          image: auradvin/dotpics:1.2.1
+          image: auradvin/dotpics:1.2
           name: dotpics-app
           ports:
             - containerPort: 8080
