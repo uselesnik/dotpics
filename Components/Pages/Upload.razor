@@ -3,6 +3,9 @@
 @using DotPic.Services
 @using DotPic.Utilities
 @using Microsoft.AspNetCore.Components.Forms
+@using SixLabors.ImageSharp
+@using SixLabors.ImageSharp.Processing
+@using System.IO
 @inject IImageService ImageService
 @inject NavigationManager Navigation
 
@@ -149,27 +152,65 @@
             var buffer = new byte[selectedFile.Size];
             await selectedFile.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).ReadAsync(buffer);
 
-            // Get image dimensions for preview
-            var imageInfo = await GetImageDimensions(buffer, selectedFile.ContentType);
+            // Load image with ImageSharp to get dimensions and resize if necessary
+            using var image = Image.Load(buffer);
+            var originalWidth = image.Width;
+            var originalHeight = image.Height;
+
+            // Resize if larger than 1024x1024, maintaining aspect ratio
+            const int maxDimension = 1024;
+            if (originalWidth > maxDimension || originalHeight > maxDimension)
+            {
+                var resizeOptions = new ResizeOptions
+                {
+                    Mode = ResizeMode.Max,
+                    Size = new Size(maxDimension, maxDimension)
+                };
+                image.Mutate(x => x.Resize(resizeOptions));
+            }
+
+            // Save resized image to memory stream in original format
+            using var ms = new MemoryStream();
+            string fileExtension;
+            string contentType;
+            if (selectedFile.ContentType == "image/gif")
+            {
+                await image.SaveAsGifAsync(ms);
+                fileExtension = ".gif";
+                contentType = "image/gif";
+            }
+            else if (selectedFile.ContentType == "image/png" || selectedFile.ContentType == "image/webp")
+            {
+                await image.SaveAsPngAsync(ms);
+                fileExtension = ".png";
+                contentType = "image/png";
+            }
+            else
+            {
+                await image.SaveAsJpegAsync(ms);
+                fileExtension = ".jpg";
+                contentType = "image/jpeg";
+            }
+            var resizedBuffer = ms.ToArray();
 
             // Create image object
-            var image = new StoredImage
+            var storedImage = new StoredImage
             {
-                FileName = Guid.NewGuid().ToString() + Path.GetExtension(selectedFile.Name),
+                FileName = Guid.NewGuid().ToString() + fileExtension,
                 OriginalFileName = selectedFile.Name,
-                ContentType = selectedFile.ContentType,
-                ImageData = buffer,
-                FileSize = selectedFile.Size,
+                ContentType = contentType,
+                ImageData = resizedBuffer,
+                FileSize = resizedBuffer.Length,
                 Description = imageDescription,
                 Tags = imageTags,
                 UploadDate = DateTime.UtcNow,
-                Width = imageInfo.width,
-                Height = imageInfo.height,
+                Width = image.Width,
+                Height = image.Height,
                 UploadedBy = "User" // You can replace this with actual user info later
             };
 
             // Save to database
-            await ImageService.UploadImageAsync(image);
+            await ImageService.UploadImageAsync(storedImage);
 
             // Success - redirect to gallery
             Navigation.NavigateTo("/gallery");
@@ -185,17 +226,4 @@
         }
     }
 
-    private async Task<(int width, int height)> GetImageDimensions(byte[] imageData, string contentType)
-    {
-        try
-        {
-            // For a real implementation, you might want to use ImageSharp or similar
-            // For now, we'll return placeholder dimensions
-            return (800, 600);
-        }
-        catch
-        {
-            return (0, 0);
-        }
-    }
 }

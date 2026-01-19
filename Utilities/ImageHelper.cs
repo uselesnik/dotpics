@@ -16,14 +16,14 @@ namespace DotPic.Utilities
         {
             if (file == null) return false;
 
-            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp" };
             var extension = Path.GetExtension(file.Name).ToLowerInvariant();
             
             if (!allowedExtensions.Contains(extension))
                 return false;
 
-            // Check file size (max 2MB for demo)
-            if (file.Size > 2 * 1024 * 1024)
+            // Check file size (max 5MB)
+            if (file.Size > 5 * 1024 * 1024)
                 return false;
 
             return true;
