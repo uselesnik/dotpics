@@ -32,7 +32,7 @@ spec:
         - env:
             - name: ASPNETCORE_URLS
               value: http://+:8080
-          image: auradvin/dotpics:1.0.1
+          image: auradvin/dotpics:1.2
           name: dotpics-app
           ports:
             - containerPort: 8080
