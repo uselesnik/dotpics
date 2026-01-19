@@ -17,20 +17,18 @@ var mongoSettings = new MongoDbSettings
 };
 
 // Redis configuration
-builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
-{
-    var redisConn = builder.Configuration["Redis:ConnectionString"] ?? "localhost:6379";
-    var options = ConfigurationOptions.Parse(redisConn);
-    options.AbortOnConnectFail = false;
-    return ConnectionMultiplexer.Connect(options);
-});
+var redisConn = builder.Configuration["Redis:ConnectionString"] ?? "localhost:6379";
+var redisConnection = ConnectionMultiplexer.Connect(redisConn);
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(redisConnection);
 
 // Configure data protection to use Redis (shared across pods)
 builder.Services.AddDataProtection()
     .SetApplicationName("DotPics") // important when multiple apps/pods share Redis
-    .PersistKeysToStackExchangeRedis(
-        () => ConnectionMultiplexer.Connect(builder.Configuration["Redis:ConnectionString"] ?? "localhost:6379").GetDatabase(),
-        "DataProtection-Keys");
+    .PersistKeysToStackExchangeRedis(redisConnection, "DataProtection-Keys");
+
+// Add SignalR with Redis backplane for multi-replica support
+builder.Services.AddSignalR().AddStackExchangeRedis(redisConn);
 
 
 builder.Services.AddSingleton(mongoSettings);
