@@ -4,6 +4,12 @@ metadata:
   annotations:
     kompose.cmd: kompose convert -f docker-compose.yml
     kompose.version: 1.38.0 (a8f5d1cbd)
+        # Sticky sessions
+    traefik.ingress.kubernetes.io/service.sticky.cookie: "true"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.name: "dotpics_affinity"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.secure: "true"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.httpOnly: "true"    
+    traefik.ingress.kubernetes.io/service.sticky.cookie.samesite: "none"
   labels:
     io.kompose.service: app
   name: app
