@@ -21,14 +21,6 @@ A modern, cloud-based image storage application built with Blazor and MongoDB. F
 - Container: Docker with multi-stage build
 - Orchestration: Kubernetes with Ingress, cert-manager
 
-## Prerequisites
-
-Before running this application, ensure you have the following installed:
-- Kubernetes cluster (e.g., minikube, kind, or cloud)
-- kubectl
-- Docker
-- Helm (for installing ingress controller and cert-manager)
-
 ## Configuration
 
 Create `k8s/.env` with your secrets:
@@ -40,7 +32,28 @@ export DOMAIN=your-domain.com
 
 **Note**: Do not commit `.env` to version control. Add it to `.gitignore`.
 
+## Docker deployment 
+```bash
+# Just the dotpics app
+docker run auradvin/dotpics:1
+```
+or the `docker-compose.yml` in the repository
+```bash
+# redis, mongo, dotpics, nginx
+docker compose up -d nginx 
+# start initial container once
+docker compose run --rm certbot-init
+# container that checks every 12hrs
+docker compose run certbot-renew
+```
+
 ## Kubernetes Deployment
+
+### Prerequisites 
+- Kubernetes cluster (e.g., minikube, microk8s etc.)
+- kubectl
+- Docker
+- Helm (for installing ingress controller and cert-manager)
 
 ### 1. Install Nginx Ingress Controller
 
@@ -64,6 +77,10 @@ Edit `k8s/.env` with your actual email and domain.
 
 ```bash
 cd k8s && source .env && for f in *.yaml; do envsubst < "$f" | kubectl apply -f -; done
+```
+or use the built script (microk8s only - remove the word "microk8s" from the dommand to only run kubectl)
+```bash
+k8s/deploy.sh
 ```
 
 ### 4. Access the Application
@@ -125,6 +142,9 @@ To perform rolling update:
 2. Apply: `kubectl apply -f k8s/app-blue-deployment.yaml`
 3. Monitor: `kubectl rollout status deployment/app-blue`
 
+Or if the image tag hasn't changed (i.e. latest or 1 or 1.2)
+1. `kubectl rollout restart deployment/app-blue` 
+
 ### Blue/Green Deployment
 Two deployments: `app-blue` (v1) and `app-green` (v2).
 
@@ -133,15 +153,14 @@ To switch to green:
 2. Update service selector in `app-service.yaml` to `version: green`
 3. Apply: `kubectl apply -f k8s/app-service.yaml`
 
-For demo, v2 has a different background color.
+or use `switch-version.sh <blue/green>`
+
+For demo, v2 has a paragraph "v1" next to the project name.
 
 ## Demo
 
-### 0-Downtime Rolling Update
-[Link to video or asciinema]
-
 ### 0-Downtime Blue/Green Deployment
-[Link to video or asciinema]
+[![asciicast](https://asciinema.org/a/769785.svg)](https://asciinema.org/a/769785)
 
 ## Docker Compose (Local Development)
 
@@ -189,7 +208,7 @@ Open your browser and navigate to: http://localhost:5000
 # Using docker 
 Use the `Dockerfile` and `docker-compose.yml`, then start with `docker compose up`. The files have to be in the same directory as the project files (DotPic.csproj)
 
-# Asciinema demonstration
+# Asciinema demonstration - Ubuntu/debian
 The video is at 2x speed, and with some spelling mistakes, because I forgot to switch to sudo user before running some commands. Be aware this video does not demonstrate setting up certificates, nginx configuration or making a systemd service to run the app. 
 [![asciicast](https://asciinema.org/a/Pe7yFyo1J8Uhw5cWYPjapmNAv.svg)](https://asciinema.org/a/Pe7yFyo1J8Uhw5cWYPjapmNAv)
 ## Asciinema Vagrant 
