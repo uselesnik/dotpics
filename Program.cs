@@ -2,6 +2,7 @@ using DotPic.Models;
 using DotPic.Services;
 using StackExchange.Redis;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +31,19 @@ builder.Services.AddDataProtection()
 // Add SignalR with Redis backplane for multi-replica support
 builder.Services.AddSignalR().AddStackExchangeRedis(redisConn);
 
+// Configure distributed cache to use Redis
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = redisConn;
+});
+
+// Add session services
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
 
 builder.Services.AddSingleton(mongoSettings);
 builder.Services.AddSingleton<IUserService, UserService>();
@@ -53,6 +67,8 @@ if (!string.IsNullOrEmpty(configuredUrls) && configuredUrls.Contains("https", St
 }
 app.UseStaticFiles();
 app.UseAntiforgery();
+
+app.UseSession();
 
 app.MapRazorComponents<DotPic.Components.App>()
     .AddInteractiveServerRenderMode();
